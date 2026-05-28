@@ -1436,3 +1436,145 @@ body {
   .sync-key-row { flex-direction: column; }
   .btn-icon { width: 100%; padding: 10px 14px; }
 }
+
+/* ============================================
+   GOAL ITEM — Expandable editor
+   ============================================ */
+
+/* Override the original flat goal-item layout */
+.goal-item {
+  display: block !important;
+  padding: 0 !important;
+  align-items: stretch !important;
+  overflow: hidden;
+}
+
+.goal-item:hover {
+  transform: none !important;
+}
+
+.goal-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: background 0.18s;
+}
+
+.goal-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.goal-row .goal-text {
+  flex: 1;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.goal-desc-indicator {
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 700;
+  opacity: 0.7;
+  line-height: 1;
+}
+
+.goal-chevron {
+  color: var(--text-muted);
+  font-size: 11px;
+  transition: transform 0.25s ease;
+  display: inline-block;
+}
+
+.goal-item.expanded .goal-chevron {
+  transform: rotate(180deg);
+  color: var(--accent);
+}
+
+.goal-item.expanded {
+  background: rgba(79, 195, 247, 0.08);
+  border-color: rgba(79, 195, 247, 0.3);
+}
+
+.goal-item.expanded .goal-row {
+  border-bottom: 1px solid var(--col-border);
+}
+
+.goal-expand {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), padding 0.35s ease;
+  padding: 0 14px;
+}
+
+.goal-item.expanded .goal-expand {
+  max-height: 400px;
+  padding: 14px 14px 16px;
+}
+
+.goal-edit-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 6px;
+}
+
+.goal-edit-label:not(:first-child) {
+  margin-top: 12px;
+}
+
+.goal-title-input,
+.goal-desc-input {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--col-border);
+  color: var(--text-primary);
+  padding: 9px 11px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: all 0.18s;
+  line-height: 1.45;
+}
+
+.goal-title-input {
+  font-weight: 600;
+}
+
+.goal-desc-input {
+  resize: vertical;
+  min-height: 70px;
+  max-height: 220px;
+}
+
+.goal-title-input:focus,
+.goal-desc-input:focus {
+  border-color: var(--accent);
+  background: rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 0 2px rgba(79, 195, 247, 0.18);
+}
+
+.goal-title-input::placeholder,
+.goal-desc-input::placeholder {
+  color: var(--text-muted);
+}
+
+.goal-edit-hint {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Mobile: a bit more padding for touch */
+@media (max-width: 640px) {
+  .goal-row { padding: 14px 14px; }
+  .goal-title-input,
+  .goal-desc-input { font-size: 14px; padding: 11px 12px; }
+  .goal-item.expanded .goal-expand { max-height: 500px; padding: 14px 14px 18px; }
+}

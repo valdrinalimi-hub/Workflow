@@ -101,27 +101,103 @@ function ensureToday() {
 }
 
 // --- GOALS ---
+let expandedGoalId = null;
+
 function renderGoals() {
   const list = $("goalList");
   list.innerHTML = "";
   state.goals.forEach((g) => {
+    if (typeof g.description === "undefined") g.description = "";
+    const isExpanded = g.id === expandedGoalId;
+    const hasDesc = (g.description || "").trim().length > 0;
+
     const li = document.createElement("li");
-    li.className = "goal-item";
+    li.className = "goal-item" + (isExpanded ? " expanded" : "");
+    li.dataset.id = g.id;
     li.innerHTML = `
-      <span class="goal-dot"></span>
-      <span class="goal-text"></span>
-      <button class="goal-delete" title="Löschen">×</button>
+      <div class="goal-row">
+        <span class="goal-dot"></span>
+        <span class="goal-text"></span>
+        <span class="goal-desc-indicator" title="Hat Beschreibung">≡</span>
+        <span class="goal-chevron" aria-hidden="true">▾</span>
+        <button class="goal-delete" title="Löschen">×</button>
+      </div>
+      <div class="goal-expand">
+        <label class="goal-edit-label">Titel</label>
+        <input type="text" class="goal-title-input" maxlength="120" />
+        <label class="goal-edit-label">Beschreibung</label>
+        <textarea class="goal-desc-input" rows="4" placeholder="Was genau willst du erreichen? Welche Schritte führen dahin?"></textarea>
+        <div class="goal-edit-hint">Wird automatisch gespeichert · Klick auf den Titel oben zum Zuklappen</div>
+      </div>
     `;
-    li.querySelector(".goal-text").textContent = g.text;
+
+    li.querySelector(".goal-text").textContent = g.text || "(Ohne Titel)";
+    li.querySelector(".goal-desc-indicator").style.display = hasDesc ? "" : "none";
+    li.querySelector(".goal-title-input").value = g.text || "";
+    li.querySelector(".goal-desc-input").value = g.description || "";
+
+    // Click on row toggles expand
+    li.querySelector(".goal-row").addEventListener("click", (e) => {
+      if (e.target.classList.contains("goal-delete")) return;
+      toggleGoalExpand(g.id);
+    });
+
+    // Title edit — live update
+    const titleInput = li.querySelector(".goal-title-input");
+    titleInput.addEventListener("input", (e) => {
+      const newText = e.target.value;
+      g.text = newText;
+      // Update visible text in collapsed header
+      li.querySelector(".goal-text").textContent = newText.trim() || "(Ohne Titel)";
+      save();
+    });
+    // Avoid collapsing when user clicks inside the input
+    titleInput.addEventListener("click", (e) => e.stopPropagation());
+
+    // Description edit — live update
+    const descInput = li.querySelector(".goal-desc-input");
+    descInput.addEventListener("input", (e) => {
+      g.description = e.target.value;
+      li.querySelector(".goal-desc-indicator").style.display =
+        e.target.value.trim() ? "" : "none";
+      save();
+    });
+    descInput.addEventListener("click", (e) => e.stopPropagation());
+
+    // Block expand-area clicks from bubbling (so editing doesn't collapse)
+    li.querySelector(".goal-expand").addEventListener("click", (e) => {
+      e.stopPropagation();
+    });
+
     li.querySelector(".goal-delete").addEventListener("click", (e) => {
       e.stopPropagation();
+      if (g.description && g.description.trim().length > 0) {
+        if (!confirm(`"${g.text}" löschen? Beschreibung geht auch verloren.`)) return;
+      }
+      if (expandedGoalId === g.id) expandedGoalId = null;
       state.goals = state.goals.filter((x) => x.id !== g.id);
       save();
       renderGoals();
     });
+
     list.appendChild(li);
   });
   $("goalsCount").textContent = state.goals.length;
+}
+
+function toggleGoalExpand(id) {
+  const wasExpanded = expandedGoalId === id;
+  // Collapse all currently-expanded items (smoothly, without re-rendering)
+  document.querySelectorAll(".goal-item.expanded").forEach((el) =>
+    el.classList.remove("expanded")
+  );
+  if (!wasExpanded) {
+    expandedGoalId = id;
+    const el = document.querySelector(`.goal-item[data-id="${id}"]`);
+    if (el) el.classList.add("expanded");
+  } else {
+    expandedGoalId = null;
+  }
 }
 
 $("addGoalForm").addEventListener("submit", (e) => {
