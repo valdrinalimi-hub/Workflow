@@ -1,0 +1,17 @@
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Node (only used for optional Electron desktop build)
+node_modules/
+dist/
+*.log
+npm-debug.log*
+
+# Local data
+*.local

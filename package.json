@@ -1,0 +1,39 @@
+{
+  "name": "alimi-workflow-dashboard",
+  "version": "1.0.0",
+  "description": "Alimi Workflow Dashboard — Trello-style productivity board with goal tracking, timer & rewards",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:mac": "electron-builder --mac",
+    "build:win": "electron-builder --win"
+  },
+  "author": "Alimi Webdesign & Marketing",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "ch.alimi.workflow-dashboard",
+    "productName": "Alimi Workflow",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "styles.css",
+      "app.js",
+      "assets/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "assets/logo.png"
+    },
+    "win": {
+      "icon": "assets/logo.png"
+    }
+  }
+}

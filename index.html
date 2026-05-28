@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
+  <title>Alimi Workflow</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#050b18" />
+
+  <!-- iOS PWA -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Alimi Workflow" />
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png" />
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png" />
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="bg-overlay"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <img src="assets/logo.png" alt="Alimi Logo" class="logo" />
+      <h1 class="workflow-title">Workflow</h1>
+    </div>
+    <div class="topbar-right">
+      <div class="streak-badge streak-routine" id="routineStreakBadge" title="Tage in Folge mit allen Routinen erledigt">
+        <span class="streak-icon">🌱</span>
+        <span class="streak-count" id="routineStreakCount">0</span>
+        <span class="streak-label">Routine</span>
+      </div>
+      <div class="streak-badge" id="streakBadge" title="Tage in Folge mit 30+ Min Zielarbeit">
+        <span class="streak-icon flame">🔥</span>
+        <span class="streak-count" id="streakCount">0</span>
+        <span class="streak-label">Ziele</span>
+      </div>
+      <div class="today-date" id="todayDate"></div>
+    </div>
+  </header>
+
+  <main class="board">
+
+    <!-- ZIELE -->
+    <section class="column column-goals">
+      <div class="column-header">
+        <span class="col-icon">🎯</span>
+        <h2>Ziele</h2>
+        <span class="col-count" id="goalsCount">0</span>
+      </div>
+      <ul class="goal-list" id="goalList"></ul>
+      <form class="add-goal" id="addGoalForm">
+        <input type="text" id="newGoalInput" placeholder="+ Neues Ziel hinzufügen" maxlength="80" />
+      </form>
+    </section>
+
+    <!-- TÄGLICHE ROUTINEN -->
+    <section class="column column-routines">
+      <div class="column-header">
+        <span class="col-icon">🔁</span>
+        <h2>Tägliche Routinen</h2>
+        <span class="col-count" id="routinesProgress">0/0</span>
+      </div>
+      <ul class="routine-list" id="routineList"></ul>
+      <form class="add-routine" id="addRoutineForm">
+        <input type="text" id="newRoutineInput" placeholder="+ Neue Routine" maxlength="60" />
+      </form>
+    </section>
+
+    <!-- TIMER -->
+    <section class="column column-timer">
+      <div class="column-header">
+        <span class="col-icon">⏱️</span>
+        <h2>Timer</h2>
+        <span class="col-tag" id="timerStatus">Bereit</span>
+      </div>
+
+      <div class="timer-display" id="timerDisplay">00:00:00</div>
+
+      <div class="timer-controls">
+        <button id="startBtn" class="btn btn-primary">Start</button>
+        <button id="stopBtn" class="btn btn-danger" disabled>Stop</button>
+      </div>
+
+      <div class="progress-section">
+        <div class="progress-label">
+          <span>Heute</span>
+          <span id="progressText">0 / 30 min</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill"></div>
+          <div class="progress-marker" title="30 Minuten Ziel"></div>
+        </div>
+        <div class="goal-status" id="goalStatus">Tagesziel: 30 Minuten</div>
+      </div>
+    </section>
+
+    <!-- TÄGLICHE STEMPEL -->
+    <section class="column column-stamps">
+      <div class="column-header">
+        <span class="col-icon">✅</span>
+        <h2>Tägliche Stempel</h2>
+        <span class="col-count" id="stampsCount">0</span>
+      </div>
+      <div class="stamps-list" id="stampsList">
+        <div class="empty-state">Noch keine Stempel heute. Drück Start um anzufangen.</div>
+      </div>
+    </section>
+
+    <!-- HISTORY / WOCHE -->
+    <section class="column column-history">
+      <div class="column-header">
+        <span class="col-icon">📊</span>
+        <h2>Historie</h2>
+        <span class="col-tag">7 Tage</span>
+      </div>
+      <div class="history-list" id="historyList"></div>
+      <div class="total-section">
+        <div class="total-label">Gesamt diese Woche</div>
+        <div class="total-value" id="weekTotal">0 min</div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- REWARD POPUP -->
+  <div class="reward-popup" id="rewardPopup">
+    <div class="reward-card">
+      <div class="reward-emoji">🏆</div>
+      <h2>Ziel erreicht!</h2>
+      <p id="rewardMessage">Du hast heute 30 Minuten an deinen Zielen gearbeitet. Weiter so!</p>
+      <div class="reward-streak">
+        <span class="flame">🔥</span>
+        <span id="rewardStreakText">Streak: 1 Tag</span>
+      </div>
+      <button class="btn btn-primary" id="closeRewardBtn">Weitermachen</button>
+    </div>
+  </div>
+
+  <!-- CONFETTI CANVAS -->
+  <canvas id="confettiCanvas"></canvas>
+
+  <script src="app.js"></script>
+</body>
+</html>
