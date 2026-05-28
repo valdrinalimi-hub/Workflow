@@ -79,7 +79,7 @@
       </form>
     </section>
 
-    <!-- TIMER -->
+    <!-- TIMER + TÄGLICHE STEMPEL (merged) -->
     <section class="column column-timer">
       <div class="column-header">
         <span class="col-icon">⏱️</span>
@@ -105,17 +105,17 @@
         </div>
         <div class="goal-status" id="goalStatus">Tagesziel: 30 Minuten</div>
       </div>
-    </section>
 
-    <!-- TÄGLICHE STEMPEL -->
-    <section class="column column-stamps">
-      <div class="column-header">
-        <span class="col-icon">✅</span>
-        <h2>Tägliche Stempel</h2>
-        <span class="col-count" id="stampsCount">0</span>
-      </div>
-      <div class="stamps-list" id="stampsList">
-        <div class="empty-state">Noch keine Stempel heute. Drück Start um anzufangen.</div>
+      <!-- Stempel-Bereich direkt unterhalb des Timers -->
+      <div class="stamps-section">
+        <div class="stamps-header">
+          <span class="col-icon">✅</span>
+          <h3>Stempel heute</h3>
+          <span class="col-count" id="stampsCount">0</span>
+        </div>
+        <div class="stamps-list" id="stampsList">
+          <div class="empty-state">Noch keine Stempel.<br>Drück Start um anzufangen.</div>
+        </div>
       </div>
     </section>
 

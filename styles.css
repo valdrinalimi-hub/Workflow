@@ -219,7 +219,7 @@ body {
   position: relative;
   z-index: 5;
   display: grid;
-  grid-template-columns: 260px 260px 340px minmax(280px, 1fr) 260px;
+  grid-template-columns: 260px 260px minmax(360px, 1fr) 260px;
   align-items: start;            /* columns size to their content, not full height */
   gap: 14px;
   padding: 20px 24px;
@@ -989,14 +989,14 @@ body {
 
 @media (max-width: 1400px) {
   .board {
-    grid-template-columns: 230px 230px 300px 1fr 230px;
+    grid-template-columns: 230px 230px minmax(320px, 1fr) 230px;
   }
   .timer-display { font-size: 44px; }
 }
 
 @media (max-width: 1100px) {
   .board {
-    grid-template-columns: 220px 220px 280px 1fr 220px;
+    grid-template-columns: 220px 220px minmax(300px, 1fr) 220px;
   }
   .timer-display { font-size: 38px; }
 }
@@ -1597,4 +1597,54 @@ body {
   .goal-title-input,
   .goal-desc-input { font-size: 14px; padding: 11px 12px; }
   .goal-item.expanded .goal-expand { max-height: 500px; padding: 14px 14px 18px; }
+}
+
+/* ============================================
+   STAMPS SUB-SECTION (within Timer column)
+   ============================================ */
+
+.stamps-section {
+  border-top: 1px solid var(--col-border);
+  margin-top: 4px;
+}
+
+.stamps-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px 8px;
+}
+
+.stamps-header h3 {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.stamps-header .col-icon {
+  font-size: 14px;
+}
+
+.stamps-header .col-count {
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+/* Slim down the stamps list now that it's nested */
+.column-timer .stamps-list {
+  padding: 4px 12px 14px;
+  min-height: 60px;
+  max-height: 45vh;
+}
+
+.column-timer .empty-state {
+  padding: 18px 12px;
+  font-size: 12px;
 }
