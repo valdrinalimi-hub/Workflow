@@ -33,7 +33,8 @@ html, body {
   height: 100%;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
   color: var(--text-primary);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   user-select: none;
 }
 
@@ -218,10 +219,11 @@ body {
   position: relative;
   z-index: 5;
   display: grid;
-  grid-template-columns: 260px 260px 340px 1fr 260px;
+  grid-template-columns: 260px 260px 340px minmax(280px, 1fr) 260px;
+  align-items: start;            /* columns size to their content, not full height */
   gap: 14px;
   padding: 20px 24px;
-  height: calc(100vh - 64px);
+  min-height: calc(100vh - 64px); /* still fill viewport so background spans */
   overflow-x: auto;
 }
 
@@ -287,7 +289,7 @@ body {
 
 .goal-list {
   list-style: none;
-  flex: 1;
+  max-height: 65vh;            /* cap if user has many goals */
   overflow-y: auto;
   padding: 12px;
   display: flex;
@@ -388,7 +390,7 @@ body {
 
 .routine-list {
   list-style: none;
-  flex: 1;
+  max-height: 65vh;
   overflow-y: auto;
   padding: 12px;
   display: flex;
@@ -647,7 +649,6 @@ body {
 
 .progress-section {
   padding: 16px 24px 24px;
-  margin-top: auto;
   border-top: 1px solid var(--col-border);
 }
 
@@ -723,12 +724,13 @@ body {
    ============================================ */
 
 .stamps-list {
-  flex: 1;
+  max-height: 65vh;
   overflow-y: auto;
   padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-height: 80px;             /* keep a small minimum so empty-state has air */
 }
 
 .stamp-card {
@@ -787,7 +789,7 @@ body {
    ============================================ */
 
 .history-list {
-  flex: 1;
+  max-height: 65vh;
   overflow-y: auto;
   padding: 12px;
   display: flex;
