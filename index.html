@@ -41,6 +41,12 @@
         <span class="streak-count" id="streakCount">0</span>
         <span class="streak-label">Ziele</span>
       </div>
+      <button class="sync-status-btn" id="syncStatusBtn" data-state="idle" aria-label="Sync-Einstellungen">
+        <svg class="sync-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17.5 19a4.5 4.5 0 1 0 -1.59 -8.71A6.5 6.5 0 0 0 4 12.5a4.5 4.5 0 0 0 4.5 4.5h9z"/>
+        </svg>
+        <span class="sync-dot"></span>
+      </button>
       <div class="today-date" id="todayDate"></div>
     </div>
   </header>
@@ -140,6 +146,61 @@
         <span id="rewardStreakText">Streak: 1 Tag</span>
       </div>
       <button class="btn btn-primary" id="closeRewardBtn">Weitermachen</button>
+    </div>
+  </div>
+
+  <!-- SETTINGS MODAL (Sync) -->
+  <div class="settings-modal" id="settingsModal">
+    <div class="settings-card">
+      <div class="settings-header">
+        <h2>☁ Sync zwischen Geräten</h2>
+        <button class="settings-close" id="settingsClose" aria-label="Schließen">×</button>
+      </div>
+
+      <div class="settings-body">
+        <div id="syncSetupView">
+          <p class="settings-intro">
+            Verbinde iPhone und Mac mit dem <strong>gleichen Sync-Key</strong>. Deine Ziele, Routinen, Stempel und Streaks bleiben dann auf beiden Geräten synchron.
+          </p>
+
+          <label class="settings-label">Dein Sync-Key</label>
+          <div class="sync-key-row">
+            <input type="text" id="syncKeyDisplay" readonly placeholder="Noch kein Sync-Key gesetzt" />
+            <button id="copyKeyBtn" class="btn-icon" disabled title="Kopieren">📋 Kopieren</button>
+          </div>
+
+          <div class="sync-actions">
+            <button class="btn btn-primary" id="generateKeyBtn">+ Neuen Key generieren</button>
+            <button class="btn btn-secondary" id="enterKeyBtn">Bestehenden Key eingeben</button>
+          </div>
+
+          <div class="sync-status-detail" id="syncStatusDetail">
+            Status: Nicht verbunden
+          </div>
+
+          <div class="settings-hint">
+            <strong>So funktioniert's:</strong><br/>
+            1. Auf <em>diesem</em> Gerät: "Neuen Key generieren"<br/>
+            2. Key kopieren, an dich selber per WhatsApp/Mail schicken<br/>
+            3. Auf dem <em>anderen</em> Gerät: App öffnen → Sync-Icon → "Bestehenden Key eingeben" → einfügen<br/>
+            4. Fertig — beide Geräte sind nun synchron
+          </div>
+        </div>
+
+        <div id="syncEnterView" style="display:none">
+          <p class="settings-intro">
+            Sync-Key vom anderen Gerät hier einfügen:
+          </p>
+          <input type="text" id="enterKeyInput" placeholder="z.B. ABCD-EFGH-JKLM-NPQR" autocomplete="off" autocapitalize="characters" />
+          <div class="sync-actions">
+            <button class="btn btn-primary" id="confirmKeyBtn">Verbinden</button>
+            <button class="btn btn-secondary" id="cancelKeyBtn">Zurück</button>
+          </div>
+          <div class="settings-hint">
+            ⚠ Wenn der Key auf dem anderen Gerät bereits Daten hat, werden deine lokalen Daten durch die vom anderen Gerät ersetzt.
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 

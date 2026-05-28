@@ -5,6 +5,12 @@
 const DAILY_GOAL_MIN = 30;
 const STORAGE_KEY = "alimi_dashboard_v1";
 
+// --- SUPABASE SYNC ---
+const SUPABASE_URL = "https://tcvokzuxhuklpfoepcyd.supabase.co";
+const SUPABASE_KEY = "sb_publishable_PKp63C3RS4NX8QiQot5YNA_Epzsmm7n";
+const SYNC_KEY_STORAGE = "alimi_sync_key";
+const PUSH_DEBOUNCE_MS = 1500;
+
 // --- STATE ---
 const state = {
   goals: [],
@@ -18,6 +24,7 @@ const state = {
   streak: 0,
   routineStreak: 0,
   lastRewardedDate: null,
+  updatedAt: 0,        // ms timestamp of last local change — used for sync conflict resolution
 };
 
 // --- HELPERS ---
@@ -47,11 +54,13 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 
 // --- PERSISTENCE ---
 function save() {
+  state.updatedAt = Date.now();
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch (e) {
     console.error("Save failed", e);
   }
+  schedulePush();
 }
 function load() {
   try {
@@ -672,6 +681,7 @@ function init() {
   }
 
   renderAll();
+  initSync(); // wire up cloud sync (no-op if no sync key set)
 
   // Refresh every minute for clock-based UI even if idle
   setInterval(() => {
@@ -696,3 +706,310 @@ function init() {
 }
 
 document.addEventListener("DOMContentLoaded", init);
+
+/* ============================================
+   CLOUD SYNC (Supabase)
+   ============================================ */
+
+let pushTimer = null;
+let pullTimer = null;
+let isPulling = false;
+let syncState = "idle"; // idle | syncing | synced | error | offline
+
+function getSyncKey() {
+  return localStorage.getItem(SYNC_KEY_STORAGE);
+}
+function setSyncKey(k) {
+  if (k) localStorage.setItem(SYNC_KEY_STORAGE, k);
+  else localStorage.removeItem(SYNC_KEY_STORAGE);
+}
+function generateSyncKey() {
+  // human-friendly: 4 groups of 4 chars, no confusable chars
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let s = "";
+  for (let i = 0; i < 16; i++) {
+    if (i > 0 && i % 4 === 0) s += "-";
+    s += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return s;
+}
+
+function setSyncStatus(newState, detail = "") {
+  syncState = newState;
+  const btn = $("syncStatusBtn");
+  if (!btn) return;
+  btn.dataset.state = newState;
+  btn.title = {
+    idle: "Sync nicht eingerichtet — klick zum Verbinden",
+    syncing: "Synchronisiere …",
+    synced: "Synchronisiert ✓",
+    error: `Sync-Fehler: ${detail}`,
+    offline: "Offline — wird automatisch nachgeholt",
+  }[newState] || "Sync";
+}
+
+function schedulePush() {
+  if (!getSyncKey()) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(doPush, PUSH_DEBOUNCE_MS);
+}
+
+async function doPush() {
+  const key = getSyncKey();
+  if (!key) return;
+  if (!navigator.onLine) {
+    setSyncStatus("offline");
+    return;
+  }
+  setSyncStatus("syncing");
+  try {
+    const payload = {
+      sync_key: key,
+      data: state,
+      updated_at: new Date(state.updatedAt || Date.now()).toISOString(),
+    };
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/sync_data?on_conflict=sync_key`,
+      {
+        method: "POST",
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          "Content-Type": "application/json",
+          Prefer: "resolution=merge-duplicates,return=minimal",
+        },
+        body: JSON.stringify(payload),
+      }
+    );
+    if (!r.ok) {
+      const text = await r.text();
+      throw new Error(`HTTP ${r.status}: ${text.slice(0, 100)}`);
+    }
+    setSyncStatus("synced");
+  } catch (e) {
+    console.error("Push failed", e);
+    setSyncStatus("error", e.message);
+  }
+}
+
+async function doPull() {
+  const key = getSyncKey();
+  if (!key) return null;
+  if (isPulling) return null;
+  if (!navigator.onLine) {
+    setSyncStatus("offline");
+    return null;
+  }
+  isPulling = true;
+  setSyncStatus("syncing");
+  try {
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/sync_data?sync_key=eq.${encodeURIComponent(key)}&select=*`,
+      {
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+        },
+      }
+    );
+    if (!r.ok) {
+      const text = await r.text();
+      throw new Error(`HTTP ${r.status}: ${text.slice(0, 100)}`);
+    }
+    const rows = await r.json();
+    setSyncStatus("synced");
+    return rows[0] || null;
+  } catch (e) {
+    console.error("Pull failed", e);
+    setSyncStatus("error", e.message);
+    return null;
+  } finally {
+    isPulling = false;
+  }
+}
+
+async function pullAndMerge() {
+  const remote = await doPull();
+  if (!remote) {
+    // no row yet — push our local
+    if (state.goals.length > 0 || Object.keys(state.days).length > 0) {
+      schedulePush();
+    }
+    return false;
+  }
+  const remoteTime = new Date(remote.updated_at).getTime();
+  const localTime = state.updatedAt || 0;
+
+  if (remoteTime > localTime + 500) {
+    // Server is newer — adopt it
+    const wasRunning = state.timer.running;
+    const wasStartedAt = state.timer.startedAt;
+    Object.keys(state).forEach((k) => delete state[k]);
+    Object.assign(state, remote.data);
+    // Don't clobber an actively-running local timer
+    if (wasRunning && wasStartedAt) {
+      state.timer.running = true;
+      state.timer.startedAt = wasStartedAt;
+    }
+    ensureToday();
+    recalcStreak();
+    recalcRoutineStreak();
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) {}
+    renderAll();
+    return true;
+  } else if (localTime > remoteTime + 500) {
+    // Local is newer — push
+    schedulePush();
+  }
+  return false;
+}
+
+function initSync() {
+  if (!getSyncKey()) {
+    setSyncStatus("idle");
+    return;
+  }
+  // initial pull on startup
+  pullAndMerge();
+
+  // pull on focus / visibility change (user switched back to app)
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && getSyncKey()) {
+      pullAndMerge();
+    }
+  });
+  window.addEventListener("focus", () => {
+    if (getSyncKey()) pullAndMerge();
+  });
+
+  // periodic background pull every 30s (catches changes from other device)
+  if (pullTimer) clearInterval(pullTimer);
+  pullTimer = setInterval(() => {
+    if (document.visibilityState === "visible" && getSyncKey()) {
+      pullAndMerge();
+    }
+  }, 30_000);
+
+  // retry on going back online
+  window.addEventListener("online", () => {
+    if (getSyncKey()) {
+      pullAndMerge();
+      schedulePush();
+    }
+  });
+}
+
+/* ----- Settings Modal logic ----- */
+
+function openSettings() {
+  refreshSettingsUI();
+  $("settingsModal").classList.add("active");
+}
+function closeSettings() {
+  $("settingsModal").classList.remove("active");
+}
+
+function refreshSettingsUI() {
+  const key = getSyncKey();
+  $("syncKeyDisplay").value = key || "";
+  $("syncKeyDisplay").placeholder = key ? "" : "Noch kein Sync-Key gesetzt";
+  $("copyKeyBtn").disabled = !key;
+
+  const statusEl = $("syncStatusDetail");
+  if (!key) {
+    statusEl.textContent = "Status: Kein Sync eingerichtet. Generiere einen Key oder gib einen bestehenden ein.";
+    statusEl.className = "sync-status-detail status-idle";
+  } else {
+    const s = {
+      idle: ["Status: Bereit", "status-idle"],
+      syncing: ["Status: Synchronisiere …", "status-syncing"],
+      synced: ["Status: ✓ Synchronisiert", "status-synced"],
+      error: ["Status: ⚠ Sync-Fehler", "status-error"],
+      offline: ["Status: Offline (wird nachgeholt)", "status-offline"],
+    }[syncState] || ["Status: ?", ""];
+    statusEl.textContent = s[0];
+    statusEl.className = "sync-status-detail " + s[1];
+  }
+}
+
+function wireSettingsModal() {
+  $("syncStatusBtn").addEventListener("click", openSettings);
+  $("settingsClose").addEventListener("click", closeSettings);
+  $("settingsModal").addEventListener("click", (e) => {
+    if (e.target === $("settingsModal")) closeSettings();
+  });
+
+  $("copyKeyBtn").addEventListener("click", async () => {
+    const key = getSyncKey();
+    if (!key) return;
+    try {
+      await navigator.clipboard.writeText(key);
+      const btn = $("copyKeyBtn");
+      const orig = btn.textContent;
+      btn.textContent = "✓ Kopiert";
+      setTimeout(() => (btn.textContent = orig), 1500);
+    } catch (e) {
+      // Fallback: select the input
+      $("syncKeyDisplay").select();
+      document.execCommand("copy");
+    }
+  });
+
+  $("generateKeyBtn").addEventListener("click", () => {
+    const existing = getSyncKey();
+    if (existing) {
+      if (!confirm("Du hast bereits einen Sync-Key. Ein neuer trennt dich von deinem aktuellen Sync. Wirklich neu generieren?")) return;
+    }
+    const newKey = generateSyncKey();
+    setSyncKey(newKey);
+    state.updatedAt = Date.now();
+    save();
+    refreshSettingsUI();
+    initSync();
+    setTimeout(() => schedulePush(), 200);
+  });
+
+  $("enterKeyBtn").addEventListener("click", () => {
+    $("syncSetupView").style.display = "none";
+    $("syncEnterView").style.display = "block";
+    $("enterKeyInput").value = "";
+    setTimeout(() => $("enterKeyInput").focus(), 50);
+  });
+  $("cancelKeyBtn").addEventListener("click", () => {
+    $("syncEnterView").style.display = "none";
+    $("syncSetupView").style.display = "block";
+  });
+  $("confirmKeyBtn").addEventListener("click", async () => {
+    const k = $("enterKeyInput").value.trim().toUpperCase();
+    if (!k) {
+      alert("Bitte einen Sync-Key eingeben.");
+      return;
+    }
+    if (!/^[A-Z0-9\-]{4,}$/.test(k)) {
+      if (!confirm("Der Key sieht ungewöhnlich aus. Trotzdem verbinden?")) return;
+    }
+    setSyncKey(k);
+    $("syncEnterView").style.display = "none";
+    $("syncSetupView").style.display = "block";
+    refreshSettingsUI();
+    // Pull immediately to grab data from the other device
+    const changed = await pullAndMerge();
+    refreshSettingsUI();
+    if (!changed) {
+      // No remote data yet — push our local under this key
+      schedulePush();
+    }
+    initSync();
+  });
+
+  $("enterKeyInput").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") $("confirmKeyBtn").click();
+  });
+}
+
+// Wire up modal on DOM ready (after init)
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(wireSettingsModal, 0);
+});
