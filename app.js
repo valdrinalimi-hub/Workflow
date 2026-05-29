@@ -24,8 +24,15 @@ const state = {
   streak: 0,
   routineStreak: 0,
   lastRewardedDate: null,
+  columnWidths: null,  // [w1, w2, w3, w4] px — user-resized column widths (null = use responsive defaults)
   updatedAt: 0,        // ms timestamp of last local change — used for sync conflict resolution
 };
+
+// Column resize defaults + bounds (px)
+const DEFAULT_COL_WIDTHS = [260, 260, 420, 260];
+const COL_MIN_WIDTH = 180;
+const COL_MAX_WIDTH = 900;
+const RESIZE_HANDLE_WIDTH = 6;
 
 // --- HELPERS ---
 const $ = (id) => document.getElementById(id);
@@ -731,6 +738,7 @@ function renderAll() {
   renderHistory();
   renderStreak();
   renderRoutineStreak();
+  applyColumnWidths();  // re-apply widths (important after sync pulls new state)
 }
 
 // --- INIT ---
@@ -1088,4 +1096,96 @@ function wireSettingsModal() {
 // Wire up modal on DOM ready (after init)
 document.addEventListener("DOMContentLoaded", () => {
   setTimeout(wireSettingsModal, 0);
+});
+
+/* ============================================
+   COLUMN RESIZE (drag handles between columns)
+   ============================================ */
+
+function applyColumnWidths() {
+  const board = document.querySelector(".board");
+  if (!board) return;
+  // Skip on mobile/stacked layout — CSS media query takes over there
+  if (window.innerWidth <= 900) {
+    board.style.gridTemplateColumns = "";  // let stylesheet handle it
+    return;
+  }
+  const widths = (Array.isArray(state.columnWidths) && state.columnWidths.length === 4)
+    ? state.columnWidths
+    : DEFAULT_COL_WIDTHS;
+  const h = RESIZE_HANDLE_WIDTH;
+  board.style.gridTemplateColumns =
+    `${widths[0]}px ${h}px ${widths[1]}px ${h}px ${widths[2]}px ${h}px ${widths[3]}px`;
+}
+
+function wireColumnResizers() {
+  document.querySelectorAll(".col-resize-handle").forEach((handle) => {
+    const colIdx = parseInt(handle.dataset.after, 10);  // resize column[colIdx]
+    if (isNaN(colIdx)) return;
+
+    const startResize = (clientX) => {
+      const widths = Array.isArray(state.columnWidths) && state.columnWidths.length === 4
+        ? [...state.columnWidths]
+        : [...DEFAULT_COL_WIDTHS];
+      const startX = clientX;
+      const startWidth = widths[colIdx];
+
+      handle.classList.add("dragging");
+      document.body.classList.add("col-resizing");
+
+      const onMove = (e) => {
+        const x = e.touches ? e.touches[0].clientX : e.clientX;
+        const delta = x - startX;
+        widths[colIdx] = Math.max(COL_MIN_WIDTH, Math.min(COL_MAX_WIDTH, startWidth + delta));
+        state.columnWidths = widths;
+        applyColumnWidths();
+        if (e.cancelable) e.preventDefault();
+      };
+      const onEnd = () => {
+        handle.classList.remove("dragging");
+        document.body.classList.remove("col-resizing");
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onEnd);
+        document.removeEventListener("touchmove", onMove);
+        document.removeEventListener("touchend", onEnd);
+        save();  // persists locally + triggers debounced cloud sync
+      };
+
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onEnd);
+      document.addEventListener("touchmove", onMove, { passive: false });
+      document.addEventListener("touchend", onEnd);
+    };
+
+    handle.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      startResize(e.clientX);
+    });
+    handle.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      startResize(e.touches[0].clientX);
+    }, { passive: false });
+
+    // Double-click to reset this column's width
+    handle.addEventListener("dblclick", () => {
+      const widths = Array.isArray(state.columnWidths) && state.columnWidths.length === 4
+        ? [...state.columnWidths]
+        : [...DEFAULT_COL_WIDTHS];
+      widths[colIdx] = DEFAULT_COL_WIDTHS[colIdx];
+      state.columnWidths = widths;
+      applyColumnWidths();
+      save();
+    });
+  });
+
+  // Re-apply on window resize (re-check mobile breakpoint)
+  window.addEventListener("resize", applyColumnWidths);
+}
+
+// Wire on DOM ready — runs after init()
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(() => {
+    applyColumnWidths();
+    wireColumnResizers();
+  }, 0);
 });
