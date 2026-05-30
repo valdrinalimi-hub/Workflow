@@ -24,15 +24,22 @@ const state = {
   streak: 0,
   routineStreak: 0,
   lastRewardedDate: null,
-  columnWidths: null,  // [w1, w2, w3, w4] px — user-resized column widths (null = use responsive defaults)
-  updatedAt: 0,        // ms timestamp of last local change — used for sync conflict resolution
+  columnLayout: null,    // { "goals": {x,y,w}, "routines": {...}, "timer": {...}, "history": {...}, "custom_xxx": {...} }
+  customColumns: [],     // [{id, title, items: [{id, text, done}]}] — user-created columns
+  updatedAt: 0,          // ms timestamp of last local change — used for sync conflict resolution
 };
 
-// Column resize defaults + bounds (px)
-const DEFAULT_COL_WIDTHS = [260, 260, 420, 260];
-const COL_MIN_WIDTH = 180;
-const COL_MAX_WIDTH = 900;
-const RESIZE_HANDLE_WIDTH = 6;
+// Default positions for the 4 built-in columns (x,y in px relative to .board, w in px)
+const DEFAULT_LAYOUT = {
+  goals:    { x: 20,   y: 0, w: 260 },
+  routines: { x: 304,  y: 0, w: 260 },
+  timer:    { x: 588,  y: 0, w: 420 },
+  history:  { x: 1032, y: 0, w: 260 },
+};
+const COL_DEFAULT_W = 280;
+const COL_MIN_W = 200;
+const COL_MAX_W = 900;
+const COL_GAP = 14;
 
 // --- HELPERS ---
 const $ = (id) => document.getElementById(id);
@@ -738,7 +745,11 @@ function renderAll() {
   renderHistory();
   renderStreak();
   renderRoutineStreak();
-  applyColumnWidths();  // re-apply widths (important after sync pulls new state)
+  // Re-render custom columns and re-apply layout (important after sync pulls new state)
+  if (typeof renderCustomColumns === "function") renderCustomColumns();
+  if (typeof wireColumnDrag === "function") wireColumnDrag();
+  if (typeof wireColumnResize === "function") wireColumnResize();
+  if (typeof applyLayout === "function") applyLayout();
 }
 
 // --- INIT ---
@@ -1099,46 +1110,168 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 /* ============================================
-   COLUMN RESIZE (drag handles between columns)
+   FREE-POSITION LAYOUT
+   Drag columns by their grip / header to reposition.
+   Resize width via right-edge handle.
    ============================================ */
 
-function applyColumnWidths() {
-  const board = document.querySelector(".board");
-  if (!board) return;
-  // Skip on mobile/stacked layout — CSS media query takes over there
-  if (window.innerWidth <= 900) {
-    board.style.gridTemplateColumns = "";  // let stylesheet handle it
-    return;
+function ensureLayout() {
+  if (!state.columnLayout || typeof state.columnLayout !== "object") {
+    state.columnLayout = {};
   }
-  const widths = (Array.isArray(state.columnWidths) && state.columnWidths.length === 4)
-    ? state.columnWidths
-    : DEFAULT_COL_WIDTHS;
-  const h = RESIZE_HANDLE_WIDTH;
-  board.style.gridTemplateColumns =
-    `${widths[0]}px ${h}px ${widths[1]}px ${h}px ${widths[2]}px ${h}px ${widths[3]}px`;
+  // Seed built-in columns from DEFAULT_LAYOUT if missing
+  Object.keys(DEFAULT_LAYOUT).forEach((id) => {
+    if (!state.columnLayout[id]) {
+      state.columnLayout[id] = { ...DEFAULT_LAYOUT[id] };
+    }
+  });
 }
 
-function wireColumnResizers() {
-  document.querySelectorAll(".col-resize-handle").forEach((handle) => {
-    const colIdx = parseInt(handle.dataset.after, 10);  // resize column[colIdx]
-    if (isNaN(colIdx)) return;
+function getColLayout(id) {
+  ensureLayout();
+  if (!state.columnLayout[id]) {
+    // Custom column without a position yet — place it to the right of the rightmost column
+    let maxRight = 20;
+    Object.values(state.columnLayout).forEach((l) => {
+      const r = (l.x || 0) + (l.w || COL_DEFAULT_W);
+      if (r > maxRight) maxRight = r;
+    });
+    state.columnLayout[id] = { x: maxRight + COL_GAP, y: 0, w: COL_DEFAULT_W };
+  }
+  return state.columnLayout[id];
+}
 
-    const startResize = (clientX) => {
-      const widths = Array.isArray(state.columnWidths) && state.columnWidths.length === 4
-        ? [...state.columnWidths]
-        : [...DEFAULT_COL_WIDTHS];
+function applyLayout() {
+  const board = document.querySelector(".board");
+  if (!board) return;
+
+  // Mobile/tablet: clear inline positions, let CSS grid take over
+  if (window.innerWidth <= 900) {
+    board.classList.remove("board-free");
+    document.querySelectorAll(".column").forEach((c) => {
+      c.style.left = "";
+      c.style.top = "";
+      c.style.width = "";
+    });
+    board.style.minHeight = "";
+    board.style.minWidth = "";
+    return;
+  }
+
+  board.classList.add("board-free");
+
+  document.querySelectorAll(".column").forEach((c) => {
+    const id = c.dataset.colId;
+    if (!id) return;
+    const lay = getColLayout(id);
+    c.style.left = lay.x + "px";
+    c.style.top = lay.y + "px";
+    c.style.width = lay.w + "px";
+  });
+
+  // Resize board canvas so columns are scrollable when positioned far right/down
+  requestAnimationFrame(() => {
+    let maxRight = 0;
+    let maxBottom = 0;
+    document.querySelectorAll(".column").forEach((c) => {
+      const id = c.dataset.colId;
+      if (!id) return;
+      const lay = getColLayout(id);
+      const right = lay.x + lay.w;
+      const bottom = lay.y + c.offsetHeight;
+      if (right > maxRight) maxRight = right;
+      if (bottom > maxBottom) maxBottom = bottom;
+    });
+    board.style.minWidth = (maxRight + 40) + "px";
+    board.style.minHeight = Math.max(maxBottom + 100, window.innerHeight - 80) + "px";
+  });
+}
+
+/* ---- Drag-to-move ---- */
+function wireColumnDrag() {
+  document.querySelectorAll(".column").forEach((col) => {
+    const header = col.querySelector(".column-header");
+    if (!header || header.dataset.dragWired === "1") return;
+    header.dataset.dragWired = "1";
+
+    const startDrag = (clientX, clientY, srcEvent) => {
+      if (window.innerWidth <= 900) return;
+      // Don't drag if the user clicked an interactive child
+      if (srcEvent.target.closest(
+        "button, input, textarea, .col-resize-edge, .goal-delete, .routine-delete, .col-delete, .custom-delete"
+      )) return;
+
+      const id = col.dataset.colId;
+      if (!id) return;
+      const lay = getColLayout(id);
       const startX = clientX;
-      const startWidth = widths[colIdx];
+      const startY = clientY;
+      const startLeft = lay.x;
+      const startTop = lay.y;
+
+      col.classList.add("dragging");
+      document.body.classList.add("col-dragging");
+
+      const onMove = (e) => {
+        const x = e.touches ? e.touches[0].clientX : e.clientX;
+        const y = e.touches ? e.touches[0].clientY : e.clientY;
+        lay.x = Math.max(0, startLeft + (x - startX));
+        lay.y = Math.max(0, startTop + (y - startY));
+        col.style.left = lay.x + "px";
+        col.style.top = lay.y + "px";
+        if (e.cancelable) e.preventDefault();
+      };
+      const onEnd = () => {
+        col.classList.remove("dragging");
+        document.body.classList.remove("col-dragging");
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onEnd);
+        document.removeEventListener("touchmove", onMove);
+        document.removeEventListener("touchend", onEnd);
+        applyLayout();   // re-measure canvas size
+        save();
+      };
+
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onEnd);
+      document.addEventListener("touchmove", onMove, { passive: false });
+      document.addEventListener("touchend", onEnd);
+    };
+
+    header.addEventListener("mousedown", (e) => {
+      if (e.button !== 0) return;
+      startDrag(e.clientX, e.clientY, e);
+    });
+    header.addEventListener("touchstart", (e) => {
+      startDrag(e.touches[0].clientX, e.touches[0].clientY, e);
+    }, { passive: true });
+  });
+}
+
+/* ---- Width-resize via right edge ---- */
+function wireColumnResize() {
+  document.querySelectorAll(".col-resize-edge").forEach((handle) => {
+    if (handle.dataset.resizeWired === "1") return;
+    handle.dataset.resizeWired = "1";
+
+    const col = handle.closest(".column");
+    if (!col) return;
+
+    const startResize = (clientX, srcEvent) => {
+      if (window.innerWidth <= 900) return;
+      const id = col.dataset.colId;
+      if (!id) return;
+      const lay = getColLayout(id);
+      const startX = clientX;
+      const startW = lay.w;
 
       handle.classList.add("dragging");
       document.body.classList.add("col-resizing");
 
       const onMove = (e) => {
         const x = e.touches ? e.touches[0].clientX : e.clientX;
-        const delta = x - startX;
-        widths[colIdx] = Math.max(COL_MIN_WIDTH, Math.min(COL_MAX_WIDTH, startWidth + delta));
-        state.columnWidths = widths;
-        applyColumnWidths();
+        lay.w = Math.max(COL_MIN_W, Math.min(COL_MAX_W, startW + (x - startX)));
+        col.style.width = lay.w + "px";
         if (e.cancelable) e.preventDefault();
       };
       const onEnd = () => {
@@ -1148,44 +1281,202 @@ function wireColumnResizers() {
         document.removeEventListener("mouseup", onEnd);
         document.removeEventListener("touchmove", onMove);
         document.removeEventListener("touchend", onEnd);
-        save();  // persists locally + triggers debounced cloud sync
+        applyLayout();
+        save();
       };
 
       document.addEventListener("mousemove", onMove);
       document.addEventListener("mouseup", onEnd);
       document.addEventListener("touchmove", onMove, { passive: false });
       document.addEventListener("touchend", onEnd);
+      if (srcEvent && srcEvent.cancelable) srcEvent.preventDefault();
     };
 
     handle.addEventListener("mousedown", (e) => {
       e.preventDefault();
-      startResize(e.clientX);
+      e.stopPropagation();
+      startResize(e.clientX, e);
     });
     handle.addEventListener("touchstart", (e) => {
-      e.preventDefault();
-      startResize(e.touches[0].clientX);
+      e.stopPropagation();
+      startResize(e.touches[0].clientX, e);
     }, { passive: false });
 
-    // Double-click to reset this column's width
+    // Double-click resets width to default
     handle.addEventListener("dblclick", () => {
-      const widths = Array.isArray(state.columnWidths) && state.columnWidths.length === 4
-        ? [...state.columnWidths]
-        : [...DEFAULT_COL_WIDTHS];
-      widths[colIdx] = DEFAULT_COL_WIDTHS[colIdx];
-      state.columnWidths = widths;
-      applyColumnWidths();
+      const id = col.dataset.colId;
+      if (!id) return;
+      const lay = getColLayout(id);
+      lay.w = (DEFAULT_LAYOUT[id] && DEFAULT_LAYOUT[id].w) || COL_DEFAULT_W;
+      col.style.width = lay.w + "px";
+      applyLayout();
       save();
     });
   });
-
-  // Re-apply on window resize (re-check mobile breakpoint)
-  window.addEventListener("resize", applyColumnWidths);
 }
 
-// Wire on DOM ready — runs after init()
+/* ============================================
+   CUSTOM COLUMNS (created via + button)
+   ============================================ */
+
+function renderCustomColumns() {
+  const board = document.querySelector(".board");
+  if (!board) return;
+  // Remove existing custom columns from the DOM
+  document.querySelectorAll(".column-custom").forEach((c) => c.remove());
+
+  if (!Array.isArray(state.customColumns)) state.customColumns = [];
+
+  state.customColumns.forEach((col) => {
+    if (!Array.isArray(col.items)) col.items = [];
+
+    const section = document.createElement("section");
+    section.className = "column column-custom";
+    section.dataset.colId = col.id;
+    section.innerHTML = `
+      <div class="column-header">
+        <span class="col-grip" title="Ziehen zum Verschieben">⠿</span>
+        <span class="col-icon">📝</span>
+        <input class="custom-col-title" maxlength="40" />
+        <span class="col-count custom-col-count">0</span>
+        <button class="col-delete" title="Spalte löschen" aria-label="Spalte löschen">×</button>
+      </div>
+      <ul class="custom-list"></ul>
+      <form class="add-custom-item">
+        <input type="text" class="new-custom-item" placeholder="+ Neuer Eintrag" maxlength="120" />
+      </form>
+      <div class="col-resize-edge" title="Breite ändern"></div>
+    `;
+
+    const titleInput = section.querySelector(".custom-col-title");
+    titleInput.value = col.title || "Neue Spalte";
+    titleInput.addEventListener("input", (e) => {
+      col.title = e.target.value;
+      save();
+    });
+    titleInput.addEventListener("mousedown", (e) => e.stopPropagation());
+    titleInput.addEventListener("touchstart", (e) => e.stopPropagation(), { passive: true });
+
+    section.querySelector(".col-delete").addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (!confirm(`Spalte "${col.title || "Neue Spalte"}" wirklich löschen?`)) return;
+      state.customColumns = state.customColumns.filter((x) => x.id !== col.id);
+      if (state.columnLayout) delete state.columnLayout[col.id];
+      save();
+      renderCustomColumns();
+      wireColumnDrag();
+      wireColumnResize();
+      applyLayout();
+    });
+
+    const list = section.querySelector(".custom-list");
+    col.items.forEach((item) => {
+      const li = document.createElement("li");
+      li.className = "custom-item" + (item.done ? " done" : "");
+      li.innerHTML = `
+        <button class="custom-check" aria-label="${item.done ? "Erledigt" : "Erledigen"}">
+          <svg viewBox="0 0 24 24"><polyline points="5,12 10,17 19,7"/></svg>
+        </button>
+        <span class="custom-text"></span>
+        <button class="custom-delete" title="Löschen" aria-label="Eintrag löschen">×</button>
+      `;
+      li.querySelector(".custom-text").textContent = item.text;
+
+      li.addEventListener("click", (e) => {
+        if (e.target.closest(".custom-delete")) return;
+        item.done = !item.done;
+        li.classList.toggle("done", item.done);
+        save();
+        section.querySelector(".custom-col-count").textContent = col.items.length;
+      });
+
+      li.querySelector(".custom-delete").addEventListener("click", (e) => {
+        e.stopPropagation();
+        col.items = col.items.filter((x) => x.id !== item.id);
+        save();
+        renderCustomColumns();
+        wireColumnDrag();
+        wireColumnResize();
+        applyLayout();
+      });
+
+      list.appendChild(li);
+    });
+    section.querySelector(".custom-col-count").textContent = col.items.length;
+
+    section.querySelector(".add-custom-item").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const input = section.querySelector(".new-custom-item");
+      const text = input.value.trim();
+      if (!text) return;
+      col.items.push({ id: uid(), text, done: false });
+      input.value = "";
+      save();
+      renderCustomColumns();
+      wireColumnDrag();
+      wireColumnResize();
+      applyLayout();
+    });
+
+    board.appendChild(section);
+  });
+}
+
+function addNewCustomColumn() {
+  if (!Array.isArray(state.customColumns)) state.customColumns = [];
+  ensureLayout();
+
+  const id = "custom_" + uid();
+  state.customColumns.push({
+    id,
+    title: "Neue Spalte",
+    items: [],
+  });
+
+  // Place to the right of the rightmost existing column
+  let maxRight = 0;
+  Object.values(state.columnLayout).forEach((l) => {
+    const r = (l.x || 0) + (l.w || COL_DEFAULT_W);
+    if (r > maxRight) maxRight = r;
+  });
+  state.columnLayout[id] = { x: maxRight + COL_GAP, y: 0, w: COL_DEFAULT_W };
+
+  save();
+  renderCustomColumns();
+  wireColumnDrag();
+  wireColumnResize();
+  applyLayout();
+
+  // Scroll the new column into view + focus the title for immediate rename
+  setTimeout(() => {
+    const el = document.querySelector(`.column[data-col-id="${id}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "end" });
+      const titleInput = el.querySelector(".custom-col-title");
+      if (titleInput) {
+        titleInput.focus();
+        titleInput.select();
+      }
+    }
+  }, 50);
+}
+
+// Wire everything on DOM ready — runs after init()
 document.addEventListener("DOMContentLoaded", () => {
   setTimeout(() => {
-    applyColumnWidths();
-    wireColumnResizers();
+    ensureLayout();
+    renderCustomColumns();
+    wireColumnDrag();
+    wireColumnResize();
+    applyLayout();
+
+    // + button
+    const addBtn = document.getElementById("addColumnBtn");
+    if (addBtn) {
+      addBtn.addEventListener("click", addNewCustomColumn);
+    }
+
+    // Re-apply layout on window resize (handles mobile breakpoint)
+    window.addEventListener("resize", applyLayout);
   }, 0);
 });

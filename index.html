@@ -54,8 +54,9 @@
   <main class="board">
 
     <!-- ZIELE -->
-    <section class="column column-goals">
+    <section class="column column-goals" data-col-id="goals">
       <div class="column-header">
+        <span class="col-grip" title="Ziehen zum Verschieben">⠿</span>
         <span class="col-icon">🎯</span>
         <h2>Ziele</h2>
         <span class="col-count" id="goalsCount">0</span>
@@ -64,13 +65,13 @@
       <form class="add-goal" id="addGoalForm">
         <input type="text" id="newGoalInput" placeholder="+ Neues Ziel hinzufügen" maxlength="80" />
       </form>
+      <div class="col-resize-edge" title="Breite ändern"></div>
     </section>
 
-    <div class="col-resize-handle" data-after="0" title="Ziehen zum Verschieben · Doppelklick zum Zurücksetzen"></div>
-
     <!-- TÄGLICHE ROUTINEN -->
-    <section class="column column-routines">
+    <section class="column column-routines" data-col-id="routines">
       <div class="column-header">
+        <span class="col-grip" title="Ziehen zum Verschieben">⠿</span>
         <span class="col-icon">🔁</span>
         <h2>Tägliche Routinen</h2>
         <span class="col-count" id="routinesProgress">0/0</span>
@@ -79,13 +80,13 @@
       <form class="add-routine" id="addRoutineForm">
         <input type="text" id="newRoutineInput" placeholder="+ Neue Routine" maxlength="60" />
       </form>
+      <div class="col-resize-edge" title="Breite ändern"></div>
     </section>
 
-    <div class="col-resize-handle" data-after="1" title="Ziehen zum Verschieben · Doppelklick zum Zurücksetzen"></div>
-
     <!-- TIMER + TÄGLICHE STEMPEL (merged) -->
-    <section class="column column-timer">
+    <section class="column column-timer" data-col-id="timer">
       <div class="column-header">
+        <span class="col-grip" title="Ziehen zum Verschieben">⠿</span>
         <span class="col-icon">⏱️</span>
         <h2>Timer</h2>
         <span class="col-tag" id="timerStatus">Bereit</span>
@@ -121,13 +122,13 @@
           <div class="empty-state">Noch keine Stempel.<br>Drück Start um anzufangen.</div>
         </div>
       </div>
+      <div class="col-resize-edge" title="Breite ändern"></div>
     </section>
 
-    <div class="col-resize-handle" data-after="2" title="Ziehen zum Verschieben · Doppelklick zum Zurücksetzen"></div>
-
     <!-- HISTORY / WOCHE -->
-    <section class="column column-history">
+    <section class="column column-history" data-col-id="history">
       <div class="column-header">
+        <span class="col-grip" title="Ziehen zum Verschieben">⠿</span>
         <span class="col-icon">📊</span>
         <h2>Historie</h2>
         <span class="col-tag">7 Tage</span>
@@ -137,9 +138,16 @@
         <div class="total-label">Gesamt diese Woche</div>
         <div class="total-value" id="weekTotal">0 min</div>
       </div>
+      <div class="col-resize-edge" title="Breite ändern"></div>
     </section>
 
   </main>
+
+  <!-- FLOATING + BUTTON (neue Spalte hinzufügen) -->
+  <button class="add-column-fab" id="addColumnBtn" title="Neue Spalte erstellen" aria-label="Neue Spalte erstellen">
+    <span class="fab-plus">+</span>
+    <span class="fab-label">Neue Spalte</span>
+  </button>
 
   <!-- REWARD POPUP -->
   <div class="reward-popup" id="rewardPopup">

@@ -218,57 +218,303 @@ body {
 .board {
   position: relative;
   z-index: 5;
-  display: grid;
-  /* 4 columns + 3 resize handles between them. Widths set by JS via inline style. */
-  grid-template-columns: 260px 6px 260px 6px minmax(360px, 1fr) 6px 260px;
-  align-items: start;            /* columns size to their content, not full height */
-  gap: 14px;
   padding: 20px 24px;
   min-height: calc(100vh - 64px); /* still fill viewport so background spans */
-  overflow-x: auto;
+  overflow: auto;
 }
 
-/* Resize handles between columns */
-.col-resize-handle {
-  align-self: stretch;
-  cursor: col-resize;
-  position: relative;
-  background: transparent;
-  transition: background 0.15s, box-shadow 0.15s;
-  min-height: 80px;
-  border-radius: 3px;
+/* Free-position layout (desktop): columns positioned absolutely by JS */
+.board.board-free {
+  display: block;
 }
-
-/* Larger invisible hit area so the user doesn't have to be pixel-perfect */
-.col-resize-handle::before {
-  content: "";
+.board.board-free > .column {
   position: absolute;
-  inset: 0;
-  left: -8px;
-  right: -8px;
+  /* left, top, width set inline by applyLayout() */
 }
 
-.col-resize-handle:hover,
-.col-resize-handle.dragging {
-  background: linear-gradient(180deg,
-    rgba(79, 195, 247, 0) 0%,
-    rgba(79, 195, 247, 0.6) 50%,
-    rgba(79, 195, 247, 0) 100%);
-  box-shadow: 0 0 12px rgba(79, 195, 247, 0.5);
+/* Fallback flex layout (used briefly before JS runs / mobile) */
+.board:not(.board-free) {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(220px, 1fr));
+  align-items: start;
+  gap: 14px;
 }
 
-.col-resize-handle.dragging {
-  background: linear-gradient(180deg,
-    rgba(79, 195, 247, 0.3) 0%,
-    rgba(79, 195, 247, 1) 50%,
-    rgba(79, 195, 247, 0.3) 100%);
+/* Grip handle (six dots) shown in each column header */
+.col-grip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: var(--text-secondary);
+  opacity: 0.45;
+  cursor: grab;
+  user-select: none;
+  padding: 0 4px;
+  letter-spacing: -2px;
+  transition: opacity 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+.column:hover .col-grip {
+  opacity: 0.9;
+  color: var(--accent);
+}
+.col-grip:active {
+  cursor: grabbing;
 }
 
-/* While actively dragging, force the resize cursor everywhere */
+/* Right-edge width-resize handle */
+.col-resize-edge {
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  right: -4px;
+  width: 10px;
+  cursor: ew-resize;
+  opacity: 0;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(79, 195, 247, 0.5) 50%,
+    transparent 100%);
+  border-radius: 4px;
+  transition: opacity 0.2s;
+  z-index: 3;
+}
+.column:hover .col-resize-edge {
+  opacity: 0.55;
+}
+.col-resize-edge:hover,
+.col-resize-edge.dragging {
+  opacity: 1 !important;
+  box-shadow: 0 0 14px rgba(79, 195, 247, 0.6);
+}
+
+/* While actively dragging or resizing, force the cursor everywhere */
+body.col-dragging,
+body.col-dragging * {
+  cursor: grabbing !important;
+  user-select: none !important;
+}
 body.col-resizing,
 body.col-resizing * {
-  cursor: col-resize !important;
+  cursor: ew-resize !important;
   user-select: none !important;
+}
+
+/* Column being dragged: lift it visually */
+.column.dragging {
+  z-index: 999 !important;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--accent);
+  transform: rotate(0.4deg) scale(1.01);
+  opacity: 0.96;
+  transition: none;
+}
+
+/* Floating + button to create a new column */
+.add-column-fab {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 60;
+  background: linear-gradient(135deg, #4fc3f7 0%, #29b6f6 100%);
+  border: none;
+  color: white;
+  cursor: pointer;
+  border-radius: 999px;
+  height: 56px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 22px 0 18px;
+  box-shadow: 0 10px 28px rgba(79, 195, 247, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.3px;
+  transition: transform 0.18s, box-shadow 0.18s;
+}
+.add-column-fab:hover {
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: 0 16px 36px rgba(79, 195, 247, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+.add-column-fab:active {
+  transform: scale(0.97);
+}
+.fab-plus {
+  font-size: 28px;
+  font-weight: 300;
+  line-height: 1;
+  margin-top: -2px;
+}
+
+/* Custom column styling */
+.column-custom {
+  border-left: 3px solid #b388ff;
+}
+.column-custom .custom-col-title {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  outline: none;
+  letter-spacing: 0.3px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  min-width: 0;
+}
+.column-custom .custom-col-title:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+.column-custom .custom-col-title:focus {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.col-delete {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 18px;
+  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all 0.18s;
+  flex-shrink: 0;
+}
+.column-custom:hover .col-delete {
+  opacity: 0.7;
+}
+.col-delete:hover {
+  opacity: 1 !important;
+  background: rgba(244, 67, 54, 0.2);
+  color: #f44336;
+}
+
+.custom-list {
+  list-style: none;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.custom-item {
+  background: var(--card-bg);
+  border: 1px solid var(--col-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.custom-item:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateX(2px);
+}
+.custom-item.done {
+  background: rgba(76, 175, 80, 0.12);
+  border-color: rgba(76, 175, 80, 0.3);
+}
+.custom-item.done .custom-text {
+  text-decoration: line-through;
+  opacity: 0.55;
+}
+
+.custom-check {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+}
+.custom-check svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: white;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0;
+  transition: opacity 0.18s;
+}
+.custom-item.done .custom-check {
+  background: #4caf50;
+  border-color: #4caf50;
+}
+.custom-item.done .custom-check svg {
+  opacity: 1;
+}
+
+.custom-text {
+  flex: 1;
+  color: var(--text-primary);
+  font-size: 14px;
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+.custom-delete {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 16px;
+  cursor: pointer;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all 0.18s;
+  flex-shrink: 0;
+}
+.custom-item:hover .custom-delete {
+  opacity: 0.7;
+}
+.custom-delete:hover {
+  opacity: 1 !important;
+  background: rgba(244, 67, 54, 0.2);
+  color: #f44336;
+}
+
+.add-custom-item {
+  padding: 0 12px 12px;
+}
+.add-custom-item input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+  transition: all 0.18s;
+}
+.add-custom-item input:focus {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: var(--accent);
+  border-style: solid;
+}
+.add-custom-item input::placeholder {
+  color: var(--text-secondary);
 }
 
 .column {
@@ -1032,29 +1278,46 @@ body.col-resizing * {
    ============================================ */
 
 @media (max-width: 1400px) {
-  .board {
-    grid-template-columns: 230px 6px 230px 6px minmax(320px, 1fr) 6px 230px;
-  }
   .timer-display { font-size: 44px; }
 }
 
 @media (max-width: 1100px) {
-  .board {
-    grid-template-columns: 220px 6px 220px 6px minmax(300px, 1fr) 6px 220px;
-  }
   .timer-display { font-size: 38px; }
 }
 
 @media (max-width: 900px) {
-  .board {
-    /* Drop the resize handles, stack as a two-column grid */
+  /* On tablet/mobile: drop free-position mode, fall back to a 2-col grid */
+  .board.board-free {
+    display: grid !important;
     grid-template-columns: 1fr 1fr;
-    grid-auto-rows: minmax(260px, auto);
+    grid-auto-rows: minmax(220px, auto);
+    gap: 14px;
     height: auto;
     overflow-y: auto;
     overflow-x: hidden;
   }
-  .col-resize-handle { display: none; }
+  .board.board-free > .column {
+    position: static !important;
+    width: auto !important;
+    left: auto !important;
+    top: auto !important;
+    transform: none !important;
+  }
+  .col-grip { display: none; }
+  .col-resize-edge { display: none; }
+  .add-column-fab {
+    bottom: 16px;
+    right: 16px;
+    height: 50px;
+    padding: 0 18px 0 14px;
+  }
+  .fab-label { display: none; }
+}
+
+@media (max-width: 640px) {
+  .board.board-free {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ============================================
