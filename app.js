@@ -26,8 +26,22 @@ const state = {
   lastRewardedDate: null,
   columnLayout: null,    // { "goals": {x,y,w}, "routines": {...}, "timer": {...}, "history": {...}, "custom_xxx": {...} }
   customColumns: [],     // [{id, title, items: [{id, text, done}]}] — user-created columns
+  bgIndex: 0,            // index into BACKGROUNDS for current wallpaper
   updatedAt: 0,          // ms timestamp of last local change — used for sync conflict resolution
 };
+
+// Hintergrund-Galerie — der Button oben rechts cycelt durch diese
+const BACKGROUNDS = [
+  { name: "NYC bei Nacht",     url: "assets/skyline.jpg" },
+  { name: "Tokyo Neon",        url: "https://images.unsplash.com/photo-1503899036084-c55cdd92da26?w=1920&q=80&auto=format&fit=crop" },
+  { name: "Paris bei Nacht",   url: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=1920&q=80&auto=format&fit=crop" },
+  { name: "Bergpanorama",      url: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1920&q=80&auto=format&fit=crop" },
+  { name: "Ozean Sonnenuntergang", url: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1920&q=80&auto=format&fit=crop" },
+  { name: "Polarlichter",      url: "https://images.unsplash.com/photo-1483347756197-71ef80e95f73?w=1920&q=80&auto=format&fit=crop" },
+  { name: "Wald im Nebel",     url: "https://images.unsplash.com/photo-1448375240586-882707db888b?w=1920&q=80&auto=format&fit=crop" },
+  { name: "Wüstendüne",        url: "https://images.unsplash.com/photo-1473580044384-7ba9967e16a0?w=1920&q=80&auto=format&fit=crop" },
+  { name: "Minimal (kein Bild)", url: null },
+];
 
 // Default positions for the 4 built-in columns (x,y in px relative to .board, w in px)
 const DEFAULT_LAYOUT = {
@@ -750,6 +764,9 @@ function renderAll() {
   if (typeof wireColumnDrag === "function") wireColumnDrag();
   if (typeof wireColumnResize === "function") wireColumnResize();
   if (typeof applyLayout === "function") applyLayout();
+  if (typeof applyBackground === "function" && typeof state.bgIndex === "number") {
+    applyBackground(state.bgIndex);
+  }
 }
 
 // --- INIT ---
@@ -1478,5 +1495,83 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Re-apply layout on window resize (handles mobile breakpoint)
     window.addEventListener("resize", applyLayout);
+
+    // Hintergrund-Switcher
+    initBackgroundSwitcher();
   }, 0);
 });
+
+/* ============================================
+   BACKGROUND SWITCHER
+   ============================================ */
+
+function applyBackground(index) {
+  const overlay = document.querySelector(".bg-overlay");
+  if (!overlay) return;
+  if (typeof index !== "number" || index < 0 || index >= BACKGROUNDS.length) index = 0;
+  const bg = BACKGROUNDS[index];
+
+  if (bg.url) {
+    // Preload then swap to avoid flash of empty bg
+    const img = new Image();
+    img.onload = () => {
+      overlay.style.backgroundImage = `url('${bg.url}')`;
+      overlay.style.opacity = "1";
+    };
+    img.onerror = () => {
+      // Fallback to first (local) background if remote URL fails
+      console.warn("Background failed to load:", bg.url);
+      overlay.style.backgroundImage = `url('${BACKGROUNDS[0].url}')`;
+    };
+    img.src = bg.url;
+  } else {
+    // "Minimal" — no image, just the dark canvas
+    overlay.style.backgroundImage = "none";
+    overlay.style.opacity = "0.6";   // keep gradient overlay visible
+  }
+}
+
+function showBgToast(name) {
+  let toast = document.getElementById("bgToast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "bgToast";
+    toast.className = "bg-toast";
+    document.body.appendChild(toast);
+  }
+  toast.textContent = "🖼️  " + name;
+  // Force reflow then add class
+  void toast.offsetWidth;
+  toast.classList.add("show");
+  clearTimeout(toast._hideTimer);
+  toast._hideTimer = setTimeout(() => {
+    toast.classList.remove("show");
+  }, 1800);
+}
+
+function cycleBackground() {
+  if (typeof state.bgIndex !== "number") state.bgIndex = 0;
+  state.bgIndex = (state.bgIndex + 1) % BACKGROUNDS.length;
+  applyBackground(state.bgIndex);
+  showBgToast(BACKGROUNDS[state.bgIndex].name);
+
+  // Animate the button icon
+  const btn = document.getElementById("bgSwitchBtn");
+  if (btn) {
+    btn.classList.remove("cycling");
+    void btn.offsetWidth;
+    btn.classList.add("cycling");
+    setTimeout(() => btn.classList.remove("cycling"), 500);
+  }
+
+  save();   // persist + sync to other devices
+}
+
+function initBackgroundSwitcher() {
+  // Apply persisted background on startup
+  if (typeof state.bgIndex === "number" && state.bgIndex > 0) {
+    applyBackground(state.bgIndex);
+  }
+  const btn = document.getElementById("bgSwitchBtn");
+  if (btn) btn.addEventListener("click", cycleBackground);
+}

@@ -7,7 +7,7 @@
 
   <!-- PWA -->
   <link rel="manifest" href="manifest.json" />
-  <meta name="theme-color" content="#050b18" />
+  <meta name="theme-color" content="#10B981" />
 
   <!-- iOS PWA -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -19,6 +19,11 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png" />
+
+  <!-- Brand font: Inter (matches alimimarketing.ch) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
 
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -41,6 +46,13 @@
         <span class="streak-count" id="streakCount">0</span>
         <span class="streak-label">Ziele</span>
       </div>
+      <button class="bg-switch-btn" id="bgSwitchBtn" title="Hintergrundbild wechseln" aria-label="Hintergrund wechseln">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+          <circle cx="8.5" cy="8.5" r="1.5"/>
+          <polyline points="21,15 16,10 5,21"/>
+        </svg>
+      </button>
       <button class="sync-status-btn" id="syncStatusBtn" data-state="idle" aria-label="Sync-Einstellungen">
         <svg class="sync-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M17.5 19a4.5 4.5 0 1 0 -1.59 -8.71A6.5 6.5 0 0 0 4 12.5a4.5 4.5 0 0 0 4.5 4.5h9z"/>
