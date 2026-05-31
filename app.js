@@ -1360,7 +1360,9 @@ function renderCustomColumns() {
       </div>
       <ul class="custom-list"></ul>
       <form class="add-custom-item">
-        <input type="text" class="new-custom-item" placeholder="+ Neuer Eintrag" maxlength="120" />
+        <span class="add-plus-badge" aria-hidden="true">+</span>
+        <input type="text" class="new-custom-item" placeholder="Neuen Eintrag hinzufügen…" maxlength="120" />
+        <button type="submit" class="add-custom-submit" title="Hinzufügen" aria-label="Eintrag hinzufügen">+</button>
       </form>
       <div class="col-resize-edge" title="Breite ändern"></div>
     `;
