@@ -1158,6 +1158,10 @@ function getColLayout(id) {
   return state.columnLayout[id];
 }
 
+// Current visual scale factor applied to the board (1 = 100%, <1 = shrunk to fit).
+// Drag/resize handlers divide pointer deltas by this so motion stays 1:1 on screen.
+let currentBoardScale = 1;
+
 function applyLayout() {
   const board = document.querySelector(".board");
   if (!board) return;
@@ -1170,8 +1174,12 @@ function applyLayout() {
       c.style.top = "";
       c.style.width = "";
     });
+    board.style.transform = "";
+    board.style.transformOrigin = "";
+    board.style.width = "";
     board.style.minHeight = "";
     board.style.minWidth = "";
+    currentBoardScale = 1;
     return;
   }
 
@@ -1186,7 +1194,7 @@ function applyLayout() {
     c.style.width = lay.w + "px";
   });
 
-  // Resize board canvas so columns are scrollable when positioned far right/down
+  // Measure content, then auto-scale board if it's wider than the viewport
   requestAnimationFrame(() => {
     let maxRight = 0;
     let maxBottom = 0;
@@ -1199,8 +1207,33 @@ function applyLayout() {
       if (right > maxRight) maxRight = right;
       if (bottom > maxBottom) maxBottom = bottom;
     });
-    board.style.minWidth = (maxRight + 40) + "px";
-    board.style.minHeight = Math.max(maxBottom + 100, window.innerHeight - 80) + "px";
+
+    const contentWidth   = maxRight + 40;        // include right padding
+    const availableWidth = window.innerWidth - 8; // small viewport buffer
+
+    // Auto-fit: if the layout is wider than the screen (MacBook 13"/14"),
+    // shrink the whole board proportionally so nothing gets cut off.
+    // Floor of 0.55 prevents text from becoming unreadably small.
+    let scale = 1;
+    if (contentWidth > availableWidth) {
+      scale = Math.max(0.55, availableWidth / contentWidth);
+    }
+    currentBoardScale = scale;
+
+    if (scale < 1) {
+      board.style.transform        = `scale(${scale})`;
+      board.style.transformOrigin  = "top left";
+      board.style.width            = contentWidth + "px";
+      board.style.minWidth         = "0";
+      // Account for vertical scale too — content needs more logical height to fill viewport
+      board.style.minHeight = Math.max(maxBottom + 100, (window.innerHeight - 80) / scale) + "px";
+    } else {
+      board.style.transform        = "";
+      board.style.transformOrigin  = "";
+      board.style.width            = "";
+      board.style.minWidth         = (maxRight + 40) + "px";
+      board.style.minHeight        = Math.max(maxBottom + 100, window.innerHeight - 80) + "px";
+    }
   });
 }
 
@@ -1232,8 +1265,11 @@ function wireColumnDrag() {
       const onMove = (e) => {
         const x = e.touches ? e.touches[0].clientX : e.clientX;
         const y = e.touches ? e.touches[0].clientY : e.clientY;
-        lay.x = Math.max(0, startLeft + (x - startX));
-        lay.y = Math.max(0, startTop + (y - startY));
+        // Divide screen-pixel deltas by current board scale so 1px of mouse
+        // motion = 1px of visual column motion, even when the board is shrunk.
+        const s = currentBoardScale || 1;
+        lay.x = Math.max(0, startLeft + (x - startX) / s);
+        lay.y = Math.max(0, startTop + (y - startY) / s);
         col.style.left = lay.x + "px";
         col.style.top = lay.y + "px";
         if (e.cancelable) e.preventDefault();
@@ -1245,7 +1281,7 @@ function wireColumnDrag() {
         document.removeEventListener("mouseup", onEnd);
         document.removeEventListener("touchmove", onMove);
         document.removeEventListener("touchend", onEnd);
-        applyLayout();   // re-measure canvas size
+        applyLayout();   // re-measure canvas size + re-evaluate auto-scale
         save();
       };
 
@@ -1287,7 +1323,8 @@ function wireColumnResize() {
 
       const onMove = (e) => {
         const x = e.touches ? e.touches[0].clientX : e.clientX;
-        lay.w = Math.max(COL_MIN_W, Math.min(COL_MAX_W, startW + (x - startX)));
+        const s = currentBoardScale || 1;
+        lay.w = Math.max(COL_MIN_W, Math.min(COL_MAX_W, startW + (x - startX) / s));
         col.style.width = lay.w + "px";
         if (e.cancelable) e.preventDefault();
       };
