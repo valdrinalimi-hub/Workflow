@@ -498,34 +498,83 @@ function renderStamps() {
   $("stampsCount").textContent = day.stamps.length;
 }
 
-// --- HISTORY (7 days) ---
+// --- HISTORY (alle Tage, scrollbar, mit Motivations-Statistik) ---
+function formatHourMin(sec) {
+  const m = Math.floor(sec / 60);
+  if (m < 60) return `${m} min`;
+  return `${Math.floor(m / 60)}h ${m % 60}m`;
+}
+
 function renderHistory() {
   const list = $("historyList");
   list.innerHTML = "";
   const goalSec = DAILY_GOAL_MIN * 60;
   const dayNames = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
-  let weekTotal = 0;
+  const today = todayKey();
 
-  for (let i = 6; i >= 0; i--) {
+  // Sammle alle Tage mit Daten UND mindestens die letzten 14 Tage (auch leere)
+  const allKeys = new Set(Object.keys(state.days || {}));
+  for (let i = 0; i < 14; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    allKeys.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
+  }
+  // Absteigend sortiert (neuester Tag oben)
+  const sortedKeys = Array.from(allKeys).sort((a, b) => b.localeCompare(a));
+
+  // --- Statistik berechnen (chronologisch für Streak) ---
+  let totalAchieved = 0;
+  let bestStreak = 0;
+  let runningStreak = 0;
+  let grandTotalSec = 0;
+  const chronoKeys = sortedKeys.slice().reverse();
+  chronoKeys.forEach((key) => {
+    const day = state.days[key];
+    let sec = day ? day.totalSec : 0;
+    if (key === today) sec = totalTodaySec();
+    if (sec >= goalSec) {
+      totalAchieved++;
+      runningStreak++;
+      if (runningStreak > bestStreak) bestStreak = runningStreak;
+    } else if (key !== today || sec === 0) {
+      // Ein leerer/fehlender Tag bricht die Serie (außer das ist heute und noch im Gange)
+      runningStreak = 0;
+    }
+    grandTotalSec += sec;
+  });
+
+  // --- Wochen-Summe (letzte 7 Tage) ---
+  let weekTotalSec = 0;
+  for (let i = 0; i < 7; i++) {
     const d = new Date();
     d.setDate(d.getDate() - i);
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     const day = state.days[key];
+    let sec = day ? day.totalSec : 0;
+    if (key === today) sec = totalTodaySec();
+    weekTotalSec += sec;
+  }
+
+  // --- Renderliste (neueste oben) ---
+  sortedKeys.forEach((key) => {
+    const day = state.days[key];
     let totalSec = day ? day.totalSec : 0;
-    if (key === todayKey()) {
-      // include current running time
-      totalSec = totalTodaySec();
-    }
-    weekTotal += totalSec;
+    if (key === today) totalSec = totalTodaySec();
 
     const min = Math.floor(totalSec / 60);
     const pct = Math.min(100, (totalSec / goalSec) * 100);
     const achieved = totalSec >= goalSec;
 
+    const [yyyy, mm, dd] = key.split("-").map((n) => parseInt(n, 10));
+    const date = new Date(yyyy, mm - 1, dd);
+    const isToday = key === today;
+
     const item = document.createElement("div");
-    item.className = "history-item";
+    item.className = "history-item" +
+      (achieved ? " achieved-day" : "") +
+      (isToday ? " today" : "");
     item.innerHTML = `
-      <span class="history-day">${dayNames[d.getDay()]} ${d.getDate()}.${d.getMonth() + 1}</span>
+      <span class="history-day">${dayNames[date.getDay()]} ${dd}.${mm}.${isToday ? '<span class="today-pill">heute</span>' : ""}</span>
       <div class="history-bar">
         <div class="history-bar-fill ${achieved ? "achieved" : "partial"}" style="width: ${pct}%"></div>
       </div>
@@ -533,12 +582,28 @@ function renderHistory() {
       <span class="history-check">${achieved ? "✓" : ""}</span>
     `;
     list.appendChild(item);
-  }
+  });
 
-  const wt = Math.floor(weekTotal / 60);
-  $("weekTotal").textContent = wt >= 60
-    ? `${Math.floor(wt / 60)}h ${wt % 60}m`
-    : `${wt} min`;
+  // --- UI-Updates: Motivations-Banner + Totals ---
+  const achievedEl  = $("totalAchievedDays");
+  const bestEl      = $("bestStreak");
+  const countTagEl  = $("historyAchievedCount");
+  if (achievedEl) achievedEl.textContent = totalAchieved;
+  if (bestEl)     bestEl.textContent     = bestStreak;
+  if (countTagEl) countTagEl.textContent = totalAchieved + " ✓";
+
+  const weekEl  = $("weekTotal");
+  const grandEl = $("grandTotal");
+  if (weekEl)  weekEl.textContent  = formatHourMin(weekTotalSec);
+  if (grandEl) grandEl.textContent = formatHourMin(grandTotalSec);
+
+  // Zeige Fade-Overlay nur wenn überhaupt gescrollt werden kann
+  requestAnimationFrame(() => {
+    const wrap = document.querySelector(".history-list-wrap");
+    if (wrap && list) {
+      wrap.classList.toggle("can-scroll", list.scrollHeight > list.clientHeight + 8);
+    }
+  });
 }
 
 // --- STREAK ---

@@ -143,12 +143,37 @@
         <span class="col-grip" title="Ziehen zum Verschieben">⠿</span>
         <span class="col-icon">📊</span>
         <h2>Historie</h2>
-        <span class="col-tag">7 Tage</span>
+        <span class="col-tag" id="historyAchievedCount">0 ✓</span>
       </div>
-      <div class="history-list" id="historyList"></div>
+
+      <!-- MOTIVATIONS-BANNER: Anzahl Erfolgs-Tage gross + Bestleistung -->
+      <div class="history-stats">
+        <div class="history-stat-big">
+          <div class="history-stat-num" id="totalAchievedDays">0</div>
+          <div class="history-stat-label">Tage Ziel erreicht 🎯</div>
+        </div>
+        <div class="history-stat-mini">
+          <span class="history-stat-mini-icon">🏆</span>
+          <span class="history-stat-mini-text">
+            Bestleistung: <strong id="bestStreak">0</strong> Tage in Folge
+          </span>
+        </div>
+      </div>
+
+      <div class="history-list-wrap">
+        <div class="history-list" id="historyList"></div>
+        <div class="history-fade-bottom" aria-hidden="true"></div>
+      </div>
+
       <div class="total-section">
-        <div class="total-label">Gesamt diese Woche</div>
-        <div class="total-value" id="weekTotal">0 min</div>
+        <div class="total-col">
+          <div class="total-label">Diese Woche</div>
+          <div class="total-value" id="weekTotal">0 min</div>
+        </div>
+        <div class="total-col total-col-right">
+          <div class="total-label">Insgesamt</div>
+          <div class="total-value" id="grandTotal">0 min</div>
+        </div>
       </div>
       <div class="col-resize-edge" title="Breite ändern"></div>
     </section>
