@@ -134,16 +134,44 @@ body {
   gap: 16px;
 }
 
-.logo {
-  height: 48px;
-  width: auto;
-  filter: drop-shadow(0 0 12px rgba(16, 185, 129, 0.25));
-  transition: filter 0.3s;
+/* Wordmark "ALIMI ⚡ MARKETING" als sauberes Inline-SVG (kein Bild) */
+.brand-wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  text-decoration: none;
+  color: var(--text-primary);
+  font-family: 'Inter', -apple-system, sans-serif;
+  font-weight: 600;
+  letter-spacing: 5px;
+  font-size: 20px;
+  line-height: 1;
+  user-select: none;
+  transition: transform 0.25s, filter 0.25s;
+}
+.brand-wordmark:hover {
+  transform: scale(1.02);
 }
 
-.logo:hover {
-  filter: drop-shadow(0 0 16px rgba(16, 185, 129, 0.5));
+.wordmark-text {
+  color: rgba(255, 255, 255, 0.95);
+  text-transform: uppercase;
 }
+
+.wordmark-bolt {
+  height: 30px;
+  width: auto;
+  filter: drop-shadow(0 0 12px rgba(16, 185, 129, 0.55));
+  transition: filter 0.3s, transform 0.3s;
+  flex-shrink: 0;
+}
+.brand-wordmark:hover .wordmark-bolt {
+  filter: drop-shadow(0 0 18px rgba(16, 185, 129, 0.85));
+  transform: rotate(-4deg) scale(1.08);
+}
+
+/* Legacy: keep .logo selector behaving if any old reference sneaks in */
+.logo { display: none; }
 
 .workflow-title {
   font-size: 18px;
@@ -1565,8 +1593,13 @@ body.col-resizing * {
     gap: 12px;
   }
 
-  .logo {
-    height: 36px;
+  .brand-wordmark {
+    font-size: 14px;
+    gap: 10px;
+    letter-spacing: 3px;
+  }
+  .wordmark-bolt {
+    height: 22px;
   }
 
   .workflow-title {
