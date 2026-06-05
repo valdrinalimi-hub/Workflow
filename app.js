@@ -27,6 +27,7 @@ const state = {
   columnLayout: null,    // { "goals": {x,y,w}, "routines": {...}, "timer": {...}, "history": {...}, "custom_xxx": {...} }
   customColumns: [],     // [{id, title, items: [{id, text, done}]}] — user-created columns
   bgIndex: 0,            // index into BACKGROUNDS for current wallpaper
+  goalsHidden: true,     // ob die Ziele-Spalte standardmäßig verschwommen ist (Privatsphäre)
   updatedAt: 0,          // ms timestamp of last local change — used for sync conflict resolution
 };
 
@@ -832,6 +833,7 @@ function renderAll() {
   if (typeof applyBackground === "function" && typeof state.bgIndex === "number") {
     applyBackground(state.bgIndex);
   }
+  if (typeof applyGoalsHidden === "function") applyGoalsHidden();
 }
 
 // --- INIT ---
@@ -1602,8 +1604,53 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Hintergrund-Switcher
     initBackgroundSwitcher();
+
+    // Ziele-Privatsphäre (Augen-Toggle + Klick-Overlay)
+    initGoalsPrivacy();
   }, 0);
 });
+
+/* ============================================
+   ZIELE  PRIVATSPHÄRE (ausblenden / einblenden)
+   ============================================ */
+
+function applyGoalsHidden() {
+  const col = document.querySelector(".column-goals");
+  if (!col) return;
+  if (state.goalsHidden) col.classList.add("goals-hidden");
+  else                   col.classList.remove("goals-hidden");
+}
+
+function toggleGoalsHidden() {
+  state.goalsHidden = !state.goalsHidden;
+  applyGoalsHidden();
+  save();   // persist + sync
+}
+
+function initGoalsPrivacy() {
+  // Default-true safety: if field missing on older saves, keep hidden
+  if (typeof state.goalsHidden !== "boolean") state.goalsHidden = true;
+  applyGoalsHidden();
+
+  const eyeBtn  = document.getElementById("goalsEyeBtn");
+  const overlay = document.getElementById("goalsRevealOverlay");
+
+  if (eyeBtn) {
+    eyeBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleGoalsHidden();
+    });
+    // Don't let the eye click trigger column-header drag
+    eyeBtn.addEventListener("mousedown", (e) => e.stopPropagation());
+    eyeBtn.addEventListener("touchstart", (e) => e.stopPropagation(), { passive: true });
+  }
+
+  if (overlay) {
+    overlay.addEventListener("click", () => {
+      if (state.goalsHidden) toggleGoalsHidden();
+    });
+  }
+}
 
 /* ============================================
    BACKGROUND SWITCHER

@@ -675,6 +675,118 @@ body.col-resizing * {
 .column-goals {
   /* Sticky/important feel */
   border-left: 3px solid var(--accent);
+  position: relative;
+}
+
+/* ============================================
+   ZIELE  ·  Privatsphäre  (ausblenden / einblenden)
+   ============================================ */
+
+/* Auge-Button im Header */
+.goals-eye-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.18s;
+  padding: 0;
+  flex-shrink: 0;
+}
+.goals-eye-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--accent);
+}
+.goals-eye-btn .eye-show,
+.goals-eye-btn .eye-hide {
+  position: absolute;
+  transition: opacity 0.2s, transform 0.2s;
+}
+.column-goals.goals-hidden .goals-eye-btn .eye-show { opacity: 1; transform: scale(1); }
+.column-goals.goals-hidden .goals-eye-btn .eye-hide { opacity: 0; transform: scale(0.7); }
+.column-goals:not(.goals-hidden) .goals-eye-btn .eye-show { opacity: 0; transform: scale(0.7); }
+.column-goals:not(.goals-hidden) .goals-eye-btn .eye-hide { opacity: 1; transform: scale(1); }
+
+/* Klick-Overlay über der Liste */
+.goals-reveal-overlay {
+  position: absolute;
+  top: 56px;                /* unter dem Header */
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  background: linear-gradient(135deg,
+    rgba(16, 185, 129, 0.10),
+    rgba(12, 22, 18, 0.55));
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  border: 1.5px dashed var(--brand-green);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-family: inherit;
+  padding: 20px 16px;
+  text-align: center;
+  z-index: 4;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s, transform 0.25s;
+}
+.column-goals.goals-hidden .goals-reveal-overlay {
+  opacity: 1;
+  pointer-events: auto;
+}
+.goals-reveal-overlay:hover {
+  background: linear-gradient(135deg,
+    rgba(16, 185, 129, 0.18),
+    rgba(12, 22, 18, 0.45));
+  transform: scale(1.01);
+  box-shadow: 0 0 24px rgba(16, 185, 129, 0.25) inset;
+}
+
+.reveal-lock {
+  font-size: 32px;
+  filter: drop-shadow(0 0 12px rgba(16, 185, 129, 0.5));
+  margin-bottom: 4px;
+  animation: lockBob 2.4s ease-in-out infinite;
+}
+@keyframes lockBob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-3px); }
+}
+.reveal-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: 0.2px;
+}
+.reveal-hint {
+  font-size: 11px;
+  color: var(--text-secondary);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+/* Wenn versteckt: Inhalt blurren und Klicks blockieren */
+.column-goals.goals-hidden .goals-content {
+  filter: blur(8px) brightness(0.7);
+  pointer-events: none;
+  user-select: none;
+  transition: filter 0.3s;
+}
+.column-goals:not(.goals-hidden) .goals-content {
+  filter: none;
+  transition: filter 0.3s;
 }
 
 .goal-list {
