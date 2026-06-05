@@ -174,10 +174,19 @@ body {
 .logo { display: none; }
 
 .workflow-title {
-  font-size: 18px;
+  /* Absolut zentriert in der Topbar — unabhängig von Brand/Tools-Breite */
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 20px;
   font-weight: 600;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
   color: var(--text-primary);
+  text-transform: uppercase;
+  pointer-events: none;       /* Klicks gehen durch zur Topbar */
+  white-space: nowrap;
+  opacity: 0.85;
 }
 
 .topbar-right {
