@@ -711,6 +711,39 @@ body.col-resizing * {
   background: rgba(255, 255, 255, 0.08);
   color: var(--accent);
 }
+
+/* Archiv-Button im Header */
+.goals-archive-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  height: 30px;
+  min-width: 30px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: all 0.18s;
+  padding: 0 6px;
+  flex-shrink: 0;
+  position: relative;
+}
+.goals-archive-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--accent);
+}
+.goals-archive-btn .archive-count {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent);
+  background: rgba(16, 185, 129, 0.15);
+  border-radius: 999px;
+  padding: 1px 5px;
+  min-width: 14px;
+  text-align: center;
+}
 .goals-eye-btn .eye-show,
 .goals-eye-btn .eye-hide {
   position: absolute;
@@ -835,6 +868,40 @@ body.col-resizing * {
   background: var(--accent);
   flex-shrink: 0;
   box-shadow: 0 0 8px var(--accent);
+}
+
+.goal-item .goal-check {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1.5px solid var(--col-border);
+  color: var(--text-secondary);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+  transition: all 0.18s;
+}
+
+.goal-item .goal-check:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  transform: scale(1.1);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+}
+
+.goal-item.achieving {
+  animation: goalAchievedPop 0.4s ease forwards;
+}
+
+@keyframes goalAchievedPop {
+  0%   { opacity: 1; transform: scale(1) translateX(0); }
+  60%  { opacity: 0.4; transform: scale(1.03) translateX(6px); }
+  100% { opacity: 0; transform: scale(0.95) translateX(20px); }
 }
 
 .goal-item .goal-text {
@@ -2178,6 +2245,187 @@ body.col-resizing * {
   .sync-actions .btn { width: 100%; }
   .sync-key-row { flex-direction: column; }
   .btn-icon { width: 100%; padding: 10px 14px; }
+}
+
+/* ============================================
+   ARCHIV MODAL (erreichte Ziele)
+   ============================================ */
+
+.archive-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s;
+  padding: 20px;
+}
+
+.archive-modal.active {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.archive-card {
+  background: linear-gradient(135deg, #0c1f17, #143828);
+  border: 1px solid var(--col-border);
+  border-radius: 16px;
+  max-width: 480px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  transform: scale(0.92);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.archive-modal.active .archive-card {
+  transform: scale(1);
+}
+
+.archive-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--col-border);
+  position: sticky;
+  top: 0;
+  background: inherit;
+}
+
+.archive-header h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.archive-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 26px;
+  line-height: 1;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.archive-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.archive-body {
+  padding: 14px 16px 20px;
+}
+
+.archive-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.archive-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--col-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  transition: background 0.15s;
+}
+
+.archive-item:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.archive-check {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+}
+
+.archive-text-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.archive-text {
+  color: var(--text-primary);
+  font-size: 14px;
+  text-decoration: line-through;
+  text-decoration-color: var(--text-secondary);
+  overflow-wrap: break-word;
+}
+
+.archive-date {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.archive-restore,
+.archive-delete {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 4px 7px;
+  border-radius: 6px;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.archive-restore:hover {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--accent);
+}
+
+.archive-delete:hover {
+  background: rgba(255, 82, 82, 0.15);
+  color: var(--danger);
+}
+
+.archive-empty {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+  padding: 30px 10px;
+}
+
+@media (max-width: 640px) {
+  .archive-card {
+    max-width: 100%;
+    margin: 0;
+  }
 }
 
 /* ============================================

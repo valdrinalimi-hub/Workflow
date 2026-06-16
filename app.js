@@ -135,7 +135,8 @@ let expandedGoalId = null;
 function renderGoals() {
   const list = $("goalList");
   list.innerHTML = "";
-  state.goals.forEach((g) => {
+  const activeGoals = state.goals.filter((g) => !g.achieved);
+  activeGoals.forEach((g) => {
     if (typeof g.description === "undefined") g.description = "";
     const isExpanded = g.id === expandedGoalId;
     const hasDesc = (g.description || "").trim().length > 0;
@@ -145,6 +146,12 @@ function renderGoals() {
     li.dataset.id = g.id;
     li.innerHTML = `
       <div class="goal-row">
+        <button class="goal-check" title="Als erreicht markieren" aria-label="Als erreicht markieren">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"/>
+            <polyline points="13 6 19 12 13 18"/>
+          </svg>
+        </button>
         <span class="goal-dot"></span>
         <span class="goal-text"></span>
         <span class="goal-desc-indicator" title="Hat Beschreibung">≡</span>
@@ -169,6 +176,11 @@ function renderGoals() {
     li.querySelector(".goal-row").addEventListener("click", (e) => {
       if (e.target.classList.contains("goal-delete")) return;
       toggleGoalExpand(g.id);
+    });
+
+    li.querySelector(".goal-check").addEventListener("click", (e) => {
+      e.stopPropagation();
+      markGoalAchieved(g.id);
     });
 
     // Title edit — live update
@@ -211,7 +223,113 @@ function renderGoals() {
 
     list.appendChild(li);
   });
-  $("goalsCount").textContent = state.goals.length;
+  $("goalsCount").textContent = activeGoals.length;
+  if (typeof renderArchive === "function") renderArchive();
+}
+
+function markGoalAchieved(id) {
+  const g = state.goals.find((x) => x.id === id);
+  if (!g) return;
+  if (expandedGoalId === id) expandedGoalId = null;
+
+  const el = document.querySelector(`.goal-item[data-id="${id}"]`);
+  const finish = () => {
+    g.achieved = true;
+    g.achievedAt = Date.now();
+    save();
+    renderGoals();
+  };
+  if (el) {
+    el.classList.add("achieving");
+    setTimeout(finish, 380);
+  } else {
+    finish();
+  }
+}
+
+function restoreGoal(id) {
+  const g = state.goals.find((x) => x.id === id);
+  if (!g) return;
+  g.achieved = false;
+  g.achievedAt = null;
+  save();
+  renderGoals();
+}
+
+function deleteArchivedGoal(id) {
+  const g = state.goals.find((x) => x.id === id);
+  if (!g) return;
+  if (!confirm(`"${g.text}" endgültig aus dem Archiv löschen?`)) return;
+  state.goals = state.goals.filter((x) => x.id !== id);
+  save();
+  renderGoals();
+}
+
+function renderArchive() {
+  const list = $("archiveList");
+  const empty = $("archiveEmpty");
+  if (!list || !empty) return;
+
+  const archived = state.goals
+    .filter((g) => g.achieved)
+    .sort((a, b) => (b.achievedAt || 0) - (a.achievedAt || 0));
+
+  list.innerHTML = "";
+  empty.style.display = archived.length === 0 ? "" : "none";
+
+  archived.forEach((g) => {
+    const li = document.createElement("li");
+    li.className = "archive-item";
+    const dateStr = g.achievedAt
+      ? new Date(g.achievedAt).toLocaleDateString("de-CH", { day: "2-digit", month: "long", year: "numeric" })
+      : "";
+    li.innerHTML = `
+      <span class="archive-check">✓</span>
+      <div class="archive-text-wrap">
+        <span class="archive-text"></span>
+        <span class="archive-date">Erreicht am ${dateStr}</span>
+      </div>
+      <button class="archive-restore" title="Zurück zu aktiven Zielen">↺</button>
+      <button class="archive-delete" title="Endgültig löschen">×</button>
+    `;
+    li.querySelector(".archive-text").textContent = g.text || "(Ohne Titel)";
+    li.querySelector(".archive-restore").addEventListener("click", () => restoreGoal(g.id));
+    li.querySelector(".archive-delete").addEventListener("click", () => deleteArchivedGoal(g.id));
+    list.appendChild(li);
+  });
+
+  const countEl = $("goalsArchiveCount");
+  if (countEl) countEl.textContent = archived.length;
+}
+
+function openArchive() {
+  renderArchive();
+  $("archiveModal").classList.add("active");
+}
+
+function closeArchive() {
+  $("archiveModal").classList.remove("active");
+}
+
+function initGoalsArchive() {
+  const btn = document.getElementById("goalsArchiveBtn");
+  const closeBtn = document.getElementById("archiveClose");
+  const modal = document.getElementById("archiveModal");
+
+  if (btn) {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openArchive();
+    });
+    btn.addEventListener("mousedown", (e) => e.stopPropagation());
+    btn.addEventListener("touchstart", (e) => e.stopPropagation(), { passive: true });
+  }
+  if (closeBtn) closeBtn.addEventListener("click", closeArchive);
+  if (modal) {
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) closeArchive();
+    });
+  }
 }
 
 function toggleGoalExpand(id) {
@@ -1607,6 +1725,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Ziele-Privatsphäre (Augen-Toggle + Klick-Overlay)
     initGoalsPrivacy();
+
+    // Ziele-Archiv (erreichte Ziele)
+    initGoalsArchive();
   }, 0);
 });
 
