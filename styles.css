@@ -2619,3 +2619,195 @@ body.col-resizing * {
   padding: 18px 12px;
   font-size: 12px;
 }
+
+/* ============================================
+   CAMERA STUDIO  (cinematic prompt builder)
+   ============================================ */
+
+.column-camera {
+  border-left: 3px solid var(--accent);
+}
+
+.cam-collapse-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+  transition: all 0.18s;
+}
+.cam-collapse-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--accent);
+}
+.cam-chevron {
+  transition: transform 0.25s ease;
+}
+.column-camera:not(.camera-collapsed) .cam-chevron {
+  transform: rotate(180deg);
+}
+
+.cam-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+.column-camera:not(.camera-collapsed) .cam-content {
+  max-height: 2400px;
+  overflow-y: auto;
+}
+
+.cam-section {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--col-border);
+}
+.cam-section:last-child {
+  border-bottom: none;
+}
+
+.cam-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+}
+
+.cam-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0;
+}
+.cam-label-row .cam-label {
+  margin-bottom: 0;
+}
+
+.cam-bar {
+  width: 3px;
+  height: 13px;
+  border-radius: 2px;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+.cam-aperture-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.cam-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.cam-option {
+  background: var(--card-bg);
+  border: 1px solid var(--col-border);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 7px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.cam-option:hover {
+  background: var(--card-bg-hover);
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.cam-option.active {
+  background: var(--brand-green-soft);
+  border-color: var(--accent);
+  color: var(--brand-green-light);
+  font-weight: 600;
+}
+
+.cam-slider {
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--col-border);
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 10px 0 8px;
+}
+.cam-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--brand-green-glow);
+  cursor: pointer;
+}
+.cam-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--brand-green-glow);
+  cursor: pointer;
+}
+
+.cam-aperture-caption {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.cam-prompt-output {
+  width: 100%;
+  resize: none;
+  background: var(--card-bg);
+  border: 1px solid var(--col-border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.55;
+  padding: 10px 12px;
+  font-family: 'Inter', monospace;
+  margin-bottom: 10px;
+}
+.cam-prompt-output:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.cam-copy-btn {
+  width: 100%;
+  background: linear-gradient(135deg, var(--brand-green) 0%, var(--brand-green-dark) 100%);
+  border: none;
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.18s;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+.cam-copy-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.45);
+}
+.cam-copy-btn.copied {
+  background: linear-gradient(135deg, var(--brand-green-light) 0%, var(--brand-green) 100%);
+}

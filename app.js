@@ -28,6 +28,7 @@ const state = {
   customColumns: [],     // [{id, title, items: [{id, text, done}]}] — user-created columns
   bgIndex: 0,            // index into BACKGROUNDS for current wallpaper
   goalsHidden: true,     // ob die Ziele-Spalte standardmäßig verschwommen ist (Privatsphäre)
+  cameraStudio: null,    // { collapsed, cameraBody, focalLength, iso, apertureIndex, filmStock }
   updatedAt: 0,          // ms timestamp of last local change — used for sync conflict resolution
 };
 
@@ -46,11 +47,29 @@ const BACKGROUNDS = [
 
 // Default positions for the 4 built-in columns (x,y in px relative to .board, w in px)
 const DEFAULT_LAYOUT = {
-  goals:    { x: 20,   y: 0, w: 260 },
-  routines: { x: 304,  y: 0, w: 260 },
-  timer:    { x: 588,  y: 0, w: 420 },
-  history:  { x: 1032, y: 0, w: 260 },
+  goals:        { x: 20,   y: 0, w: 260 },
+  routines:     { x: 304,  y: 0, w: 260 },
+  timer:        { x: 588,  y: 0, w: 420 },
+  history:      { x: 1032, y: 0, w: 260 },
+  camerastudio: { x: 1316, y: 0, w: 320 },
 };
+
+// --- CAMERA STUDIO (Prompt Builder) ---
+const CAM_BODIES = [
+  "Leica M11", "Leica SL3", "Hasselblad X2D", "Phase One IQ4",
+  "Fujifilm GFX 100S", "Sony A7R V", "Canon EOS R5", "Nikon Z9",
+  "Contax T2", "Pentax 67", "Mamiya RB67", "Lomo LC-A",
+  "Kodak Portra 400", "Fuji Velvia 50", "Ilford HP5 B&W", "Canon AE-1",
+];
+const CAM_FOCALS = ["14mm", "24mm", "35mm", "50mm", "85mm", "135mm", "200mm"];
+const CAM_ISOS = ["100", "200", "400", "800", "1600", "3200", "6400", "12800"];
+const CAM_APERTURES = [1.2, 1.4, 1.8, 2, 2.8, 4, 5.6, 8, 11, 16, 22];
+const CAM_FILMS = [
+  "None", "Kodak Portra 400", "Kodak Portra 160", "Kodak Gold 200",
+  "Fuji Superia 400", "Kodachrome 64", "Cinestill 800T", "Polaroid 600",
+  "Expired Film", "Teal & Orange", "Bleach Bypass", "Muted / Faded",
+  "Black Mist 1/2", "Halation", "Anamorphic Flare", "B&W",
+];
 const COL_DEFAULT_W = 280;
 const COL_MIN_W = 200;
 const COL_MAX_W = 900;
@@ -952,6 +971,7 @@ function renderAll() {
     applyBackground(state.bgIndex);
   }
   if (typeof applyGoalsHidden === "function") applyGoalsHidden();
+  if (typeof renderCameraStudio === "function") renderCameraStudio();
 }
 
 // --- INIT ---
@@ -1702,6 +1722,141 @@ function addNewCustomColumn() {
   }, 50);
 }
 
+/* ============================================
+   CAMERA STUDIO  (cinematic prompt builder)
+   ============================================ */
+
+function ensureCameraStudioState() {
+  if (!state.cameraStudio || typeof state.cameraStudio !== "object") {
+    state.cameraStudio = {
+      collapsed: true,
+      cameraBody: CAM_BODIES[0],
+      focalLength: "50mm",
+      iso: "400",
+      apertureIndex: 4,   // CAM_APERTURES[4] === 2.8
+      filmStock: "None",
+    };
+  }
+}
+
+function camApertureCaption(f) {
+  if (f <= 4) return "shallow depth of field, soft background separation, smooth bokeh";
+  if (f <= 8) return "balanced depth of field, subject sharp with gentle background blur";
+  return "deep depth of field, sharp focus throughout the frame";
+}
+
+function buildCameraPrompt() {
+  const cs = state.cameraStudio;
+  const f = CAM_APERTURES[cs.apertureIndex];
+  let prompt = `Shot on a ${cs.cameraBody}, ${cs.focalLength} lens, f/${f} (${camApertureCaption(f)}), ISO ${cs.iso}.`;
+  if (cs.filmStock && cs.filmStock !== "None") {
+    prompt += ` Captured on ${cs.filmStock} film stock for an authentic analog look.`;
+  }
+  return prompt;
+}
+
+function renderCamOptionGroup(containerId, options, currentValue, onSelect) {
+  const el = $(containerId);
+  if (!el) return;
+  el.innerHTML = "";
+  options.forEach((opt) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "cam-option" + (opt === currentValue ? " active" : "");
+    btn.textContent = opt;
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      onSelect(opt);
+      save();
+      renderCameraStudio();
+    });
+    el.appendChild(btn);
+  });
+}
+
+function renderCameraStudio() {
+  ensureCameraStudioState();
+  const cs = state.cameraStudio;
+
+  const col = document.querySelector(".column-camera");
+  if (col) col.classList.toggle("camera-collapsed", !!cs.collapsed);
+
+  renderCamOptionGroup("camBodyOptions", CAM_BODIES, cs.cameraBody, (v) => { cs.cameraBody = v; });
+  renderCamOptionGroup("camFocalOptions", CAM_FOCALS, cs.focalLength, (v) => { cs.focalLength = v; });
+  renderCamOptionGroup("camIsoOptions", CAM_ISOS, cs.iso, (v) => { cs.iso = v; });
+  renderCamOptionGroup("camFilmOptions", CAM_FILMS, cs.filmStock, (v) => { cs.filmStock = v; });
+
+  const slider = $("camApertureSlider");
+  if (slider) slider.value = cs.apertureIndex;
+  const f = CAM_APERTURES[cs.apertureIndex];
+  const valEl = $("camApertureValue");
+  if (valEl) valEl.textContent = `f/${f}`;
+  const capEl = $("camApertureCaption");
+  if (capEl) capEl.textContent = camApertureCaption(f);
+
+  const promptEl = $("camPromptOutput");
+  if (promptEl) promptEl.value = buildCameraPrompt();
+
+  if (typeof wireColumnDrag === "function") wireColumnDrag();
+  if (typeof wireColumnResize === "function") wireColumnResize();
+}
+
+function initCameraStudio() {
+  ensureCameraStudioState();
+
+  const slider = $("camApertureSlider");
+  if (slider) {
+    slider.min = 0;
+    slider.max = CAM_APERTURES.length - 1;
+    slider.step = 1;
+    slider.addEventListener("input", (e) => {
+      state.cameraStudio.apertureIndex = parseInt(e.target.value, 10);
+      save();
+      renderCameraStudio();
+    });
+    slider.addEventListener("mousedown", (e) => e.stopPropagation());
+    slider.addEventListener("touchstart", (e) => e.stopPropagation(), { passive: true });
+  }
+
+  const collapseBtn = $("camCollapseBtn");
+  if (collapseBtn) {
+    collapseBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      state.cameraStudio.collapsed = !state.cameraStudio.collapsed;
+      save();
+      renderCameraStudio();
+      setTimeout(applyLayout, 260); // re-measure board once the collapse transition finishes
+    });
+    collapseBtn.addEventListener("mousedown", (e) => e.stopPropagation());
+    collapseBtn.addEventListener("touchstart", (e) => e.stopPropagation(), { passive: true });
+  }
+
+  const copyBtn = $("camCopyBtn");
+  if (copyBtn) {
+    copyBtn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const text = $("camPromptOutput").value;
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (err) {
+        const ta = $("camPromptOutput");
+        ta.select();
+        document.execCommand("copy");
+      }
+      const original = copyBtn.textContent;
+      copyBtn.textContent = "✓ Kopiert!";
+      copyBtn.classList.add("copied");
+      setTimeout(() => {
+        copyBtn.textContent = original;
+        copyBtn.classList.remove("copied");
+      }, 1600);
+    });
+    copyBtn.addEventListener("mousedown", (e) => e.stopPropagation());
+  }
+
+  renderCameraStudio();
+}
+
 // Wire everything on DOM ready — runs after init()
 document.addEventListener("DOMContentLoaded", () => {
   setTimeout(() => {
@@ -1728,6 +1883,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Ziele-Archiv (erreichte Ziele)
     initGoalsArchive();
+
+    // Camera Studio (cinematischer Prompt-Builder)
+    initCameraStudio();
   }, 0);
 });
 

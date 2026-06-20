@@ -213,6 +213,61 @@
       <div class="col-resize-edge" title="Breite ändern"></div>
     </section>
 
+    <!-- CAMERA STUDIO (cinematischer Prompt-Builder) -->
+    <section class="column column-camera camera-collapsed" data-col-id="camerastudio">
+      <div class="column-header">
+        <span class="col-grip" title="Ziehen zum Verschieben">⠿</span>
+        <span class="col-icon">🎬</span>
+        <h2>Camera Studio</h2>
+        <span class="col-tag">Prompt Builder</span>
+        <button class="cam-collapse-btn" id="camCollapseBtn" title="Ein-/Ausklappen" aria-label="Camera Studio ein- oder ausklappen">
+          <svg class="cam-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="cam-content" id="camContent">
+
+        <div class="cam-section">
+          <div class="cam-label"><span class="cam-bar"></span>Camera Body</div>
+          <div class="cam-options" id="camBodyOptions"></div>
+        </div>
+
+        <div class="cam-section">
+          <div class="cam-label"><span class="cam-bar"></span>Focal Length</div>
+          <div class="cam-options" id="camFocalOptions"></div>
+        </div>
+
+        <div class="cam-section">
+          <div class="cam-label"><span class="cam-bar"></span>ISO</div>
+          <div class="cam-options" id="camIsoOptions"></div>
+        </div>
+
+        <div class="cam-section">
+          <div class="cam-label-row">
+            <div class="cam-label"><span class="cam-bar"></span>Aperture</div>
+            <span class="cam-aperture-value" id="camApertureValue">f/2.8</span>
+          </div>
+          <input type="range" class="cam-slider" id="camApertureSlider" min="0" max="10" step="1" value="4" />
+          <div class="cam-aperture-caption" id="camApertureCaption"></div>
+        </div>
+
+        <div class="cam-section">
+          <div class="cam-label"><span class="cam-bar"></span>Film Stock &amp; Filter</div>
+          <div class="cam-options" id="camFilmOptions"></div>
+        </div>
+
+        <div class="cam-section cam-prompt-section">
+          <div class="cam-label"><span class="cam-bar"></span>Generierter Prompt</div>
+          <textarea class="cam-prompt-output" id="camPromptOutput" rows="4" readonly></textarea>
+          <button class="cam-copy-btn" id="camCopyBtn" type="button">📋 Prompt kopieren</button>
+        </div>
+
+      </div>
+      <div class="col-resize-edge" title="Breite ändern"></div>
+    </section>
+
   </main>
 
   <!-- FLOATING + BUTTON (neue Spalte hinzufügen) -->
